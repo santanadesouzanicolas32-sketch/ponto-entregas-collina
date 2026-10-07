@@ -1,0 +1,13 @@
+{
+  "name": "ponto-entregas-collina",
+  "private": true,
+  "description": "Ponto de Entregas Collina: aplicativo dos entregadores e painel do gerente",
+  "scripts": {
+    "verificar": "python build.py"
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0",
+    "globals": "^15.0.0",
+    "jsdom": "^25.0.0"
+  }
+}

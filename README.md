@@ -1,72 +1,88 @@
 # Ponto de Entregas Collina
 
-Dois arquivos prontos para o GitHub Pages, sem servidor:
+Dois sites prontos para o GitHub Pages, sem servidor:
 
 | Página | Para quem | O que faz |
 |---|---|---|
-| `index.html` | Entregadores (Pedro, Bruno, João, Kauã, Nicolas) | Registra turno e entregas; no fim, envia o fechamento ao gerente |
+| `index.html` | Entregadores (Pedro, Bruno, João, Kauã, Nicolas) | Registra turno e entregas; os registros vão sozinhos ao gerente |
 | `gerente.html` | Gerente (celular ou computador) | Acompanha o desenvolvimento de cada entregador e consulta qualquer registro |
 
 A página do gerente não tem link no aplicativo e pede aos buscadores que não a indexem.
 
 ## Como os dados chegam ao gerente
 
-**Conexão automática (recomendada).** Os registros de cada entregador vão sozinhos para um repositório **privado** do GitHub (`ponto-dados`, um arquivo por entregador, cada envio é um commit) e o gerente os recebe na própria página, conferindo a cada minuto.
+**Conexão automática (recomendada).** Os registros de cada entregador vão sozinhos para um repositório **privado** do GitHub
+(`ponto-dados`, um arquivo por entregador, cada envio é um commit) e o gerente os recebe na própria página, conferindo a cada minuto.
 
 Configuração única, feita pelo gerente em `gerente.html` → **Dados → Conexão automática**:
 
 1. Criar uma chave de acesso (fine-grained token) só para o repositório `ponto-dados`, com **Contents: Read and write**.
 2. Colar a chave na página e tocar em **Conectar**.
-3. Tocar em **Link para os entregadores** e mandar o link, no privado, a cada um. Ao abrir o link uma vez no celular, a conexão fica guardada e o endereço é limpo.
+3. Tocar em **Link para os entregadores** e mandar o link, no privado, a cada um. Ao abrir o link uma vez no celular, a conexão fica guardada.
 
-Depois disso o entregador não faz mais nada: cada alteração é enviada em poucos segundos (e quando a internet volta). O envio **soma** ao que já está na nuvem, então apagar os dados do aparelho não apaga o que o gerente já recebeu.
+Depois disso cada alteração é enviada em poucos segundos (e quando a internet volta). O envio **soma** ao que já está na nuvem:
+apagar os dados do aparelho não apaga o que o gerente já recebeu.
 
-**Por arquivo (alternativa, sem configuração).** Entregador: **Ajustes → Enviar fechamento ao gerente** gera `entregas-<nome>-<data>.json` (compartilha pelo WhatsApp no celular). Gerente: **Dados → Importar**. Reimportar não duplica: vale o arquivo mais recente de cada turno.
+**Por arquivo (alternativa).** Entregador: **Ajustes → Enviar por arquivo**. Gerente: **Dados → Importar**. Reimportar não duplica: vale o arquivo mais recente de cada turno.
 
-Em qualquer caminho, cada arquivo leva um código de integridade (SHA-256); se o conteúdo for alterado, a importação recusa. Os dados do gerente ficam só no navegador dele.
+Em qualquer caminho, cada arquivo leva um código de integridade (SHA-256): se o conteúdo for alterado, a importação recusa.
 
-## Entrega esquecida
+## No aplicativo do entregador
 
-No aplicativo, **+ Manual → Esqueci de registrar**: informa o horário em que a entrega foi feita (precisa estar dentro do turno e fora das pausas). Ela entra na ordem do horário, aparece com a marca **DEPOIS** e o painel do gerente mostra a hora em que foi realmente registrada. Depois de salva, o horário não muda.
+- **Foto da comanda** lê bloco, apartamento e valor no próprio aparelho; **+ Manual** registra sem foto.
+- **Entrega esquecida:** em **+ Manual → Esqueci de registrar**, informe o horário em que entregou. Ela volta para a ordem do horário,
+  fica marcada com **DEPOIS** e o gerente vê a hora em que foi realmente registrada. Máximo de 10 por turno.
+- **Nome:** escolhido na primeira vez; depois de registrar turnos ele não pode ser trocado (evita misturar dados de duas pessoas).
 
 ## O que o gerente enxerga
 
-- **Visão geral:** entregas, vendido, ticket médio e entregas por hora da equipe; ranking com índice ajustado e tendência; entregas por dia, evolução semanal, bloco, faixa de andar, mapa de calor.
-- **Entregadores:** a mesma análise para um entregador, turno a turno (entrada, saída, pausas, horas líquidas, pontualidade), evolução semanal contra os demais, qualidade do registro.
-- **Consultas:** todas as entregas com horário exato (hh:mm:ss), bloco, apartamento, valor, origem (foto/digitado) e situação (normal, corrigida, excluída, para conferir, lançada depois), com filtros e planilha CSV. Cada registro mostra o histórico: valor original, correção, exclusão, hora em que uma entrega esquecida foi registrada, turno e entregas vizinhas — para responder a qualquer questionamento.
-- **Dados:** situação de cada envio, pontos de atenção (envio antigo, turno aberto, dia repetido), exportação consolidada.
+- **Visão geral:** ritmo, índice e tendência por entregador; entregas por dia e por semana; bloco, andar, mapa de calor.
+- **Entregadores:** a mesma análise por pessoa, turno a turno, com qualidade do registro.
+- **Consultas:** qualquer entrega com horário exato (hh:mm:ss), valor, origem e situação (normal, corrigida, excluída, para conferir,
+  lançada depois), com filtros e planilha CSV. Cada registro mostra o histórico completo para responder a qualquer questionamento.
+- **Dados:** conexão, situação dos envios, pontos de atenção (relógio adiantado, muitas entregas lançadas depois, dia repetido…),
+  turnos ignorados.
+- **Ignorar turno:** na ficha de um turno, "Ignorar nas análises" (nome errado, teste, duplicado). Não apaga; restaura em Dados.
 
 ## Como a comparação é justa
 
-- **Horas líquidas:** da entrada à saída menos as pausas (sobreposições contadas uma vez). Turno aberto conta até a hora do envio.
-- **Entregas por hora** só aparecem com pelo menos 4 h líquidas no período; antes disso, “poucos dados”.
-- **Índice ajustado:** compara as entregas feitas com o esperado pelo ritmo da equipe **nas mesmas horas do dia** (20h rende mais que 15h). 100 = igual à equipe.
-- **Tendência:** média dos últimos turnos contra a dos anteriores, só com 6 ou mais turnos fechados e variação acima de 8%.
-- Entregas excluídas não contam; valores ausentes não entram no ticket médio (mostra-se o % com valor).
+- **Horas líquidas:** entrada → saída menos as pausas. Turno aberto conta até a hora do envio.
+- **Entregas por hora** só aparecem com 4 h ou mais no período; antes disso, "poucos dados".
+- **Índice:** entregas feitas ÷ esperadas pelo ritmo **dos demais entregadores** (o próprio fica fora da conta) no **mesmo dia da semana e hora**;
+  quando um dia tem pouco dado, o ritmo é puxado para o da hora. 100 = igual aos demais.
+- **Vendido e ticket são informação**, não nota: dependem da comanda, por isso não têm destaque nem ranking.
+- **Tendência:** últimos turnos contra os anteriores, só com 6 ou mais turnos fechados e variação acima de 8%.
+
+## Desenvolvimento
+
+O código fica em `src/`, organizado em camadas (veja [docs/ARQUITETURA.md](docs/ARQUITETURA.md)). `index.html` e `gerente.html` são **gerados**.
+
+```bash
+npm install                                   # uma vez (eslint e jsdom)
+pip install -r ferramentas/requirements.txt   # uma vez (typer e pytest)
+python build.py                               # confere, monta e testa tudo
+```
+
+`python build.py` roda, nesta ordem: lint e regras de camadas, consistência de botões e ids, os testes das duas páginas e os testes
+Python; **só se tudo passar** ele troca `index.html` e `gerente.html`. (`--rapido` só monta.)
 
 ## Ferramentas em Python (opcional)
 
-Pasta `ferramentas/` (Typer). Útil para guardar arquivos, juntar tudo e conferir números fora do navegador.
+Pasta `ferramentas/` (Typer): validar, juntar e resumir arquivos fora do navegador.
 
 ```bash
-pip install -r ferramentas/requirements.txt
 python ferramentas/consolidar.py validar  pasta_dos_arquivos
 python ferramentas/consolidar.py consolidar pasta_dos_arquivos -o consolidado.json
 python ferramentas/consolidar.py resumo consolidado.json
-python ferramentas/consolidar.py exemplo pasta_de_teste      # arquivos de EXEMPLO para testar o painel
-pytest ferramentas/testes
+python ferramentas/consolidar.py exemplo pasta_de_teste      # arquivos de EXEMPLO para ver o painel
 ```
 
-Para trabalhar com os dados da conexão automática fora do navegador: `git clone` do repositório `ponto-dados` e aponte as ferramentas para a pasta `entregas/`. O consolidado gerado pode ser importado no `gerente.html` como qualquer outro arquivo. Dados de exemplo ficam marcados e o painel avisa; **Dados → Remover dados de exemplo** os apaga.
-
-## Testes
-
-- `index.html?selftest` — 68 autotestes do aplicativo (inclui entrega esquecida)
-- `gerente.html?selftest` — 37 autotestes do painel (integridade, junção, justiça dos cálculos, conexão automática com GitHub simulado, telas)
-- `pytest ferramentas/testes` — 43 testes, incluindo a conferência do código de integridade entre JavaScript e Python
+Para a conexão automática: `git clone` do repositório `ponto-dados` e aponte as ferramentas para a pasta `entregas/`.
 
 ## Atenção
 
-Este repositório (o do site) é **público**: não coloque arquivos de entregas reais aqui. Os dados reais ficam no repositório **privado** `ponto-dados`. O link de conexão contém a chave de acesso desse repositório; quem a tiver consegue ler e escrever nele, então envie só aos entregadores. Se alguém sair da equipe ou o link vazar, apague a chave no GitHub e gere outra.
+Este repositório (o do site) é **público**: não coloque arquivos de entregas reais aqui. Os dados reais ficam no repositório **privado** `ponto-dados`.
+O link de conexão contém a chave de acesso desse repositório; quem a tiver consegue ler e escrever nele, então envie só aos entregadores.
+Se alguém sair da equipe ou o link vazar, apague a chave no GitHub e gere outra.
 
 A leitura da comanda por foto (OCR) roda no aparelho e pode errar com foto ruim: por isso há conferência manual, e registros duvidosos ficam marcados.

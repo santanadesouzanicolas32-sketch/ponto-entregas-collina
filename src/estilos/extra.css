@@ -1,0 +1,50 @@
+/* Acréscimos da versão com backend: estados de carregamento, alertas, admin, tabelas */
+.boot{position:fixed;inset:0;display:grid;place-content:center;justify-items:center;gap:12px;background:var(--bg);z-index:200;color:var(--mut)}
+.boot img{border-radius:50%;border:2px solid var(--gold)}
+.offline{position:sticky;top:0;z-index:150;background:#5a2118;color:#ffd9d2;text-align:center;padding:10px 14px;font-size:13px;font-weight:600}
+.lerr{color:var(--bad);min-height:20px;font-size:13px;margin:12px 0 0;text-align:center}
+#login,#pwchange,#setup{position:fixed;inset:0;z-index:100;display:grid;place-items:center;padding:20px;overflow:auto;background:radial-gradient(circle at 50% 0,#3a2314,#150b07 65%)}
+#login.hide,#pwchange.hide,#setup.hide{display:none!important}
+.skeleton{background:linear-gradient(90deg,var(--card) 25%,var(--card2) 50%,var(--card) 75%);background-size:200% 100%;animation:sk 1.3s infinite;border-radius:14px;height:88px;margin-bottom:12px}
+@keyframes sk{to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.skeleton{animation:none}}
+.errbox{border:1px solid #7a2f27;background:#2c1410;color:#ffc9bf;border-radius:14px;padding:16px;margin-bottom:12px;font-size:14px}
+.errbox .btn{margin-top:10px}
+.alerts{display:grid;gap:8px;margin-bottom:12px}
+.alert{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:14px;font-size:14px;font-weight:600;border:1px solid var(--line);background:var(--card)}
+.alert i{flex:none;width:10px;height:10px;border-radius:50%;margin-top:5px;background:var(--mut)}
+.alert.warning{background:#3a2a0e;border-color:#7a6026;color:#f6dca0}.alert.warning i{background:var(--warn)}
+.alert.success{background:#16301c;border-color:#2f6a3a;color:#bfe8c4}.alert.success i{background:var(--ok)}
+.alert.info i{background:var(--gold)}
+.proj{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:10px;font-size:13px;color:var(--mut)}
+.proj b{color:var(--txt)}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:4px 10px;border-radius:99px;background:var(--card2)}
+.pill i{width:8px;height:8px;border-radius:50%;background:var(--mut)}
+.pill.open i{background:var(--ok)}.pill.on_break i{background:var(--warn)}.pill.closed i{background:var(--mut)}
+.pill.off{color:var(--bad)}
+.tag{font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;background:var(--card2);color:var(--mut);letter-spacing:.4px}
+.tag.photo{color:var(--gold2)}
+.tag.auto{background:#4d3a15;color:var(--warn)}
+.item .dest{min-width:78px}
+.row-between{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.field-row>div{min-width:0}
+textarea{font:inherit;color:var(--txt);background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px;width:100%;font-size:16px;min-height:72px;resize:vertical}
+textarea:focus{outline:2px solid var(--gold)}
+.tbl-click tr[data-act]{cursor:pointer}
+.tbl-click tr[data-act]:hover td{background:#ffffff08}
+.num{text-align:right}
+.good{color:var(--ok)}.bad{color:var(--bad)}.warnc{color:var(--warn)}
+.toolbar .btn{width:auto}
+.temp{font-family:ui-monospace,Consolas,monospace;font-size:20px;letter-spacing:1px;background:var(--card2);border:1px dashed var(--gold);border-radius:12px;padding:14px;text-align:center;user-select:all;word-break:break-all}
+.diff{font-size:12px;color:var(--mut);margin:4px 0 0;word-break:break-word}
+.logrow{padding:12px 0;border-top:1px solid var(--line);font-size:13px}
+.logrow:first-child{border-top:0}
+.logrow b{font-size:14px}
+.btn[disabled]{opacity:.55;cursor:default}
+.loadmore{margin-top:12px}
+.ocr-note{font-size:13px;margin:6px 0 0;padding:10px 12px;border-radius:12px;background:var(--card2)}
+.ocr-note.warn{background:#3a2a0e;color:#f6dca0}
+.break-row{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line);font-size:13px}
+.break-row:first-child{border-top:0}
+@media(min-width:900px){#view{min-height:60vh}.toolbar input{flex:1 1 200px}}

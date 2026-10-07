@@ -1,0 +1,42 @@
+<div id="boot" class="boot"><img data-logo alt="" width="72" height="72"><p>Carregando…</p></div>
+<div id="offline" class="offline hide" role="status">Sem internet. O sistema continua funcionando; só a leitura de fotos precisa de conexão na primeira vez.</div>
+<div id="storageWarn" class="offline hide" role="alert">Este navegador não deixou salvar os dados (aba privada?). Os registros somem ao fechar a página. Abra em uma aba normal.</div>
+
+<!-- primeiro uso -->
+<div id="setup" class="hide">
+  <form class="lbox" id="suform" autocomplete="off" novalidate>
+    <img class="logo big" data-logo alt="Empório Collina" width="104" height="104">
+    <h1>Empório Collina</h1>
+    <p class="mut">Ponto de entregas</p>
+    <label for="suname">Quem é você?</label>
+    <select id="suname" required><option value="">Escolha o seu nome</option></select>
+    <label for="sugoal">Meta de entregas por turno</label>
+    <input type="number" id="sugoal" value="60" min="1" max="1000" inputmode="numeric">
+    <button class="btn gold" style="margin-top:20px" type="submit">Começar</button>
+    <p id="suerr" class="lerr" role="alert"></p>
+    <p class="mut" style="font-size:12px;text-align:center;margin:0">Seus registros ficam guardados só neste aparelho.</p>
+  </form>
+</div>
+
+<!-- aplicativo -->
+<div id="app" class="hide">
+  <div class="topbar">
+    <img class="logo" data-logo alt="" width="38" height="38">
+    <div class="ttl"><b id="pageTitle">Turno</b><small id="topDate"></small></div>
+    <button class="avatar" id="userBtn" data-act="settings" aria-label="Ajustes">?</button>
+  </div>
+  <div class="wrap" id="view" aria-live="polite"></div>
+  <div class="dock hide" id="dock"><div class="in">
+    <button class="btn gold photo" data-act="photo" id="btnFoto">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+      Foto da comanda</button>
+    <button class="manual" data-act="manual">+ Manual<small style="display:block;font-size:10px;font-weight:600;opacity:.75;margin-top:2px">esqueci uma</small></button>
+  </div></div>
+  <nav id="nav" aria-label="Principal"></nav>
+</div>
+
+<div id="selftest" class="hide"></div>
+<input type="file" id="file" accept="image/*" capture="environment" class="hide">
+<input type="file" id="importFile" accept="application/json,.json" class="hide">
+<div class="scrim" id="scrim"><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
+<div class="toast" id="toast" role="status"></div>
