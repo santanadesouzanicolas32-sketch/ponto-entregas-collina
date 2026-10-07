@@ -536,7 +536,7 @@ function shiftAlerts({ sm, nowMs, plannedEnd, count, goal, review }) {
 
 /* ---------------- armazenamento ---------------- */
 const KEY = 'ponto-collina:v1';
-const emptyDb = () => ({ v: 1, user: null, shifts: [], prefs: { autoPhoto: true } });
+const emptyDb = () => ({ v: 1, user: null, shifts: [], prefs: { autoPhoto: true }, imported: [] });
 let DB = emptyDb();
 let persist = true;                         // desligado nos autotestes
 let storageOk = true;
@@ -554,6 +554,7 @@ function sanitizeDb(d) {
     out.user = { name: str(d.user.name, 60).trim() || 'Entregador', goal: Number.isInteger(goal) && goal >= 1 && goal <= 1000 ? goal : 60 };
   }
   out.prefs.autoPhoto = d.prefs?.autoPhoto !== false;
+  out.imported = (Array.isArray(d.imported) ? d.imported : []).filter((x) => typeof x === 'string').slice(0, 50).map((x) => x.slice(0, 64));
   for (const s of d.shifts) {
     if (!s || s.test || s.demo || !isNum(s.start) || !isNum(s.sched) || !isNum(s.plannedEnd) || !/^\d{4}-\d{2}-\d{2}$/.test(String(s.date))) continue;
     if (s.plannedEnd <= s.sched || (s.end != null && (!isNum(s.end) || s.end <= s.start))) continue;
@@ -722,6 +723,38 @@ function undoDelivery(id) {
     if (i >= 0) { if (now() - s.deliveries[i].t > 120000) throw new AppErr('TOO_LATE', 'Já passou do tempo de desfazer. Exclua pela lista.'); s.deliveries.splice(i, 1); save(); return; }
   }
   throw new AppErr('NOT_FOUND', 'Entrega não encontrada.');
+}
+
+/* ---------------- lançamentos avulsos (feitos a pedido; cada lote entra uma única vez por aparelho) ---------------- */
+// valor em centavos; hora no relógio de São Paulo. Para lançar outro lote, acrescente um item com id novo.
+const PRELOAD = [
+  { id: 'lanc-2026-10-07', date: '2026-10-07', items: [
+    { h: 15, m: 39, block: 'C1', apt: '12', v: 1166 },
+    { h: 15, m: 22, block: 'C2', apt: '273', v: 1908 },
+  ] },
+];
+/** Aplica os lotes ainda não aplicados. Vai para o turno do dia (aberto, se houver); se não houver turno, cria um começando na 1ª entrega.
+ *  Não repete: pula entrega idêntica (mesmo bloco/apto a até 5 min) e nunca reaplica um lote, mesmo que a entrega seja excluída depois. */
+function applyPreload() {
+  let added = 0;
+  for (const batch of PRELOAD) {
+    if (DB.imported.includes(batch.id)) continue;
+    const items = batch.items.map((i) => ({ ...i, t: localToMs(batch.date, i.h, i.m), n: normalizeApt(i.apt), block: normalizeBlock(i.block) }));
+    let s = DB.shifts.find((x) => x.date === batch.date && x.end == null) || DB.shifts.find((x) => x.date === batch.date);
+    if (!s) {
+      const sched = localToMs(batch.date, 15);
+      s = { id: uid(), date: batch.date, preset: 15, sched, plannedEnd: sched + CFG.presets[15] * 60000, start: Math.min(...items.map((i) => i.t)), end: null, closeReason: null, breaks: [], deliveries: [] };
+      DB.shifts.push(s);
+    }
+    for (const i of items) {
+      if (s.deliveries.some((d) => !d.del && d.block === i.block && d.apt === i.n.apt && Math.abs(d.t - i.t) <= 300000)) continue;
+      s.deliveries.push({ id: uid(), t: i.t, block: i.block, apt: i.n.apt, floor: i.n.floor, review: false, source: 'manual', del: false, v: i.v });
+      added++;
+    }
+    DB.imported.push(batch.id);
+  }
+  if (added || PRELOAD.some((b) => DB.imported.includes(b.id))) save();
+  return added;
 }
 
 /* ---------------- visão do turno atual ---------------- */
@@ -1358,7 +1391,9 @@ $('suform').addEventListener('submit', (e) => {
   if (name.length < 2) return ($('suerr').textContent = 'Informe o seu nome.');
   if (!Number.isInteger(goal) || goal < 1 || goal > 1000) return ($('suerr').textContent = 'A meta precisa ser um número de 1 a 1000.');
   DB.user = { name: name.slice(0, 60), goal };
+  const n = applyPreload();
   save(); enterApp();
+  if (n) toast(`${n} entrega(s) lançada(s) no seu histórico`, 5000);
 });
 function showOnly(id) { for (const x of ['setup', 'app']) $(x).classList.toggle('hide', x !== id); }
 function enterApp() { showOnly('app'); buildNav(); render(); }
@@ -1378,7 +1413,11 @@ function boot() {
   load();
   startTimers();
   if (new URLSearchParams(location.search).has('selftest')) { runSelfTestsView(); return; }
-  if (DB.user) enterApp(); else showOnly('setup');
+  if (DB.user) {
+    const n = applyPreload();
+    enterApp();
+    if (n) toast(`${n} entrega(s) lançada(s) no seu histórico`, 5000);
+  } else showOnly('setup');
   $('boot').classList.add('hide');
 }
 
@@ -1866,7 +1905,28 @@ function runSelfTests() {
     T('dados antigos de teste/exemplo são descartados ao carregar', () => {
       const mk = (id, extra) => ({ id, date: '2026-10-0' + id, preset: 15, sched: 1, plannedEnd: 5, start: 2, end: 4, breaks: [], deliveries: [{ t: 3, block: 'A1', apt: '241' }], ...extra });
       const c = sanitizeDb({ shifts: [mk('1', {}), mk('2', { test: true }), mk('3', { demo: true })] }); eq(c.shifts.map((s) => s.id), ['1']);
-      eq(Object.keys(c).sort(), ['prefs', 'shifts', 'user', 'v'], 'sem registro de alterações');
+      eq(Object.keys(c).sort(), ['imported', 'prefs', 'shifts', 'user', 'v'], 'sem registro de alterações');
+    });
+    T('lançamento avulso: cria o turno do dia com as 2 entregas, horários e valores certos', () => {
+      eq(applyPreload(), 2);
+      const s = DB.shifts.find((x) => x.date === '2026-10-07'); ok(s, 'turno de 07/10');
+      const d = [...s.deliveries].sort((a, b) => a.t - b.t).map((x) => [fmtTime(x.t), x.block, x.apt, x.floor, x.v]);
+      eq(d, [['15:22', 'C2', '273', 27, 1908], ['15:39', 'C1', '12', 1, 1166]]);
+      eq(s.start, localToMs('2026-10-07', 15, 22)); eq(DB.imported, ['lanc-2026-10-07']);
+      eq(applyPreload(), 0, 'não reaplica'); eq(s.deliveries.length, 2);
+    });
+    T('lançamento avulso: entra no turno já aberto do dia, sem duplicar e sem reaplicar após exclusão', () => {
+      clock(at(2026, 10, 7, 15, 3)); startShift(15); clock(at(2026, 10, 7, 15, 40)); addDelivery('C1', '12', { value: 1166 });   // já registrada à mão
+      eq(applyPreload(), 1, 'só a que faltava'); eq(DB.shifts.length, 1); eq(openShift().deliveries.length, 2);
+      const lanc = openShift().deliveries.find((x) => x.apt === '273'); deleteDelivery(lanc.id);
+      eq(applyPreload(), 0); eq(liveDeliveries(openShift()).length, 1, 'excluída continua excluída');
+    });
+    T('lançamento avulso: o painel e os totais contam', () => {
+      applyPreload(); clock(at(2026, 10, 7, 18)); biReset('tudo'); const all = biRows(), R = biRange('tudo', all); const K = biKpis(biApply(all, R), R);
+      eq([K.n, K.sales], [2, 3074]);
+    });
+    T('lançamento avulso: o controle de lotes sobrevive ao backup', () => {
+      applyPreload(); const c = sanitizeDb(JSON.parse(JSON.stringify(DB))); eq(c.imported, ['lanc-2026-10-07']); eq(sanitizeDb({ shifts: [], imported: [5, 'x'] }).imported, ['x']);
     });
     T('painel: indicadores, comparação e cobertura de valor', () => {
       biFixture(); biReset(); const all = biRows(); eq(all.length, 7);
