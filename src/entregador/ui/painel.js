@@ -35,7 +35,7 @@ function biApply(rows, R, skip = {}) {
     && (skip.band || !BI.band || floorBand(r.floor) === BI.band)
     && (skip.day || !BI.day || r.date === BI.day)
     && (skip.hour || BI.hour == null || hourOf(r.t) === BI.hour)
-    && (skip.dow || BI.dow == null || dowOfYmd(r.date) === BI.dow)
+    && (skip.dow || BI.dow == null || dowOf(r.t) === BI.dow)
     && (!BI.noValue || r.v == null));
 }
 
@@ -70,7 +70,7 @@ function biKpis(rows, R) {
 function biDaily(all, R) {
   const rows = biApply(all, R, { day: true });
   const map = {};
-  for (const r of rows) { const o = (map[r.date] ||= { n: 0, v: 0 }); o.n++; o.v += r.v || 0; }
+  for (const r of rows) { if (!map[r.date]) map[r.date] = { n: 0, v: 0 }; const o = map[r.date]; o.n++; o.v += r.v || 0; }
   const days = [];
   const total = Math.min(R.days, 120);                // limite de colunas legíveis
   for (let i = total - 1; i >= 0; i--) { const d = addDays(R.to, -i); days.push({ date: d, n: map[d]?.n || 0, v: map[d]?.v || 0 }); }
@@ -84,7 +84,7 @@ function biHeat(all, R) {
   const grid = {};
   let mx = 0, hmin = 24, hmax = -1;
   for (const r of rows) {
-    const h = hourOf(r.t), d = dowOfYmd(r.date), k = d * 24 + h;
+    const h = hourOf(r.t), d = dowOf(r.t), k = d * 24 + h;
     grid[k] = (grid[k] || 0) + 1; mx = Math.max(mx, grid[k]); hmin = Math.min(hmin, h); hmax = Math.max(hmax, h);
   }
   if (!rows.length) return '<div class="empty">Sem dados.</div>';
@@ -103,7 +103,7 @@ function biHeat(all, R) {
 function biBarsH(rows, key, allKeys) {
   const m = {};
   for (const k of allKeys || []) m[k] = { n: 0, v: 0 };
-  for (const r of rows) { const k = key(r); if (k == null) continue; const o = (m[k] ||= { n: 0, v: 0 }); o.n++; o.v += r.v || 0; }
+  for (const r of rows) { const k = key(r); if (k == null) continue; const o = getOr(m, k, () => ({ n: 0, v: 0 })); o.n++; o.v += r.v || 0; }
   return m;
 }
 

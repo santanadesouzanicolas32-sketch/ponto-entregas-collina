@@ -51,7 +51,7 @@ async function mSave() {
 const ignKey = (rid, sid) => `${rid}|${sid}`;
 const isIgnored = (rid, sid) => !!ST.ignorados?.[ignKey(rid, sid)];
 const activeTurnos = (rid) => (ST.riders[rid]?.turnos || []).filter((s) => !isIgnored(rid, s.id));
-async function ignoreShift(rid, sid, motivo) { (ST.ignorados ||= {})[ignKey(rid, sid)] = { em: now(), motivo: str(motivo, 60) }; await mSave(); }
+async function ignoreShift(rid, sid, motivo) { if (!ST.ignorados) ST.ignorados = {}; ST.ignorados[ignKey(rid, sid)] = { em: now(), motivo: str(motivo, 60) }; await mSave(); }
 async function restoreShift(rid, sid) { if (ST.ignorados) delete ST.ignorados[ignKey(rid, sid)]; await mSave(); }
 function ignoredList() {
   const out = [];

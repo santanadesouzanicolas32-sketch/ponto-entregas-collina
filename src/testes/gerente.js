@@ -244,6 +244,35 @@ async function runMgrTests() {
       const pre = mkShift('2026-10-05', 15, [15, 0], [23, 0], [[16, 0, 'A1', '241', 1000]]); await load('joao', [pre]); eq(compute().shifts.find((x) => x.rid === 'joao').entradaOriginal, null);
     });
 
+    await T('mapa de calor: entrega depois da meia-noite cai no dia da semana real (quarta 00h, não terça)', async () => {
+      const sh = mkShift('2026-10-06', 16, [16, 0], [null], [[17, 0, 'A1', '241', 1000]]); sh.end = at('2026-10-07', 0, 40);
+      sh.deliveries.push({ id: 'x', t: at('2026-10-07', 0, 10), block: 'B1', apt: '151', floor: 15, review: false, source: 'manual', del: false, v: 500 });
+      await load('bruno', [sh]); const h = heatmap(compute().shifts);
+      ok(/title="Qua 00h: 1"/.test(h) && /title="Ter 17h: 1"/.test(h) && /title="Ter 00h: 0"/.test(h), 'deveria estar em Qua 00h');
+    });
+
+    await T('robustez: 300 arquivos com campos trocados/apagados não derrubam a importação nem as telas', async () => {
+      let seed = 12345; const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+      const base = await mkExport('bruno', [mkShift('2026-10-05', 15, [15, 0], [23, 0], spread(15, 12), [[18, 0, 18, 20]]), mkShift('2026-10-06', 16, [16, 0], [null], spread(16, 6))]);
+      const valores = [null, 'x', '', -1, 0, 1e20, {}, [], true, '2026-13-45', 1.5, [1, 2]];
+      const paths = (o, pre = []) => (o && typeof o === 'object' ? Object.keys(o).flatMap((k) => [[...pre, k], ...paths(o[k], [...pre, k])]) : []);
+      const host = document.createElement('div'); host.id = 'view'; document.body.appendChild(host); const falhas = [];
+      try {
+        for (let i = 0; i < 300; i++) {
+          const o = JSON.parse(JSON.stringify(base)), alvo = paths({ turnos: o.turnos }), p = alvo[Math.floor(rnd() * alvo.length)], v = valores[Math.floor(rnd() * valores.length)];
+          let ref = { turnos: o.turnos }; for (const k of p.slice(0, -1)) ref = ref[k]; if (rnd() < 0.3) delete ref[p[p.length - 1]]; else ref[p[p.length - 1]] = v;
+          o.integridade = 'sha256:' + await sha256hex(canonical({ entregador: 'bruno', turnos: o.turnos }));
+          ST = novoEstado(); MC = null;
+          try {
+            await importTexts([{ name: 'f.json', text: JSON.stringify(o) }]); MG.period = 'tudo'; MG.rider = 'bruno';
+            for (const fn of [renderGeral, renderInd, renderCons, renderDados]) { fn(host); const t = host.textContent; if (/undefined|NaN|\[object/.test(t)) throw new Error(fn.name + ' mostra undefined/NaN'); }
+            dataQuality(); await buildConsolidated();
+          } catch (e) { falhas.push(`${p.join('.')}=${JSON.stringify(v)}: ${e.message}`); }
+        }
+      } finally { host.remove(); MG.period = '30'; }
+      ok(!falhas.length, falhas.slice(0, 3).join(' | ') + ` (${falhas.length} falhas)`);
+    });
+
     /* ---- turnos ignorados ---- */
     await T('ignorar turno: sai das análises, consultas e do consolidado, e volta ao restaurar', async () => {
       await load('bruno', [mkShift('2026-10-05', 15, [15, 0], [23, 0], spread(15, 6)), mkShift('2026-10-06', 15, [15, 0], [23, 0], spread(15, 4))]);

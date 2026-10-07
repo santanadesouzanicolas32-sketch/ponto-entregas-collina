@@ -49,7 +49,7 @@ const weekStart = (ymd) => { const d = new Date(ymd + 'T12:00:00Z'); d.setUTCDat
 /** Série semanal de entregas por hora de um grupo de turnos. */
 function weeklyRate(shifts) {
   const m = {};
-  for (const s of shifts) { const k = weekStart(s.data); const o = (m[k] ||= { n: 0, net: 0 }); o.n += s.live.length; o.net += s.sm.net; }
+  for (const s of shifts) { const k = weekStart(s.data); if (!m[k]) m[k] = { n: 0, net: 0 }; const o = m[k]; o.n += s.live.length; o.net += s.sm.net; }
   return Object.entries(m).sort((a, b) => a[0].localeCompare(b[0])).map(([w, o]) => ({ w, rate: o.net >= 3600 ? o.n / (o.net / 3600) : null, n: o.n, net: o.net }));
 }
 /** Tendência: média de entregas/h dos últimos turnos contra os turnos anteriores (precisa de pelo menos 6 turnos fechados). */

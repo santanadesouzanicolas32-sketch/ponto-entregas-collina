@@ -63,6 +63,11 @@ def _num(x: Any) -> bool:
     return isinstance(x, (int, float)) and not isinstance(x, bool)
 
 
+def _ts(x: Any) -> bool:
+    """Instante plausível em milissegundos (anos 2000 a 2100); fora disso só pode ser arquivo corrompido."""
+    return _num(x) and 946684800000 < x < 4102444800000
+
+
 @dataclass
 class Pacote:
     entregador: str
@@ -81,18 +86,18 @@ def limpar_turnos(brutos: Any, entregador: str) -> tuple[list[dict], int, int]:
         raise ArquivoInvalido("Arquivo grande demais.")
     saida, descartadas, turnos_desc = [], 0, 0
     for s in brutos:
-        ok = (isinstance(s, dict) and all(_num(s.get(k)) for k in ("entrada", "previstoIni", "previstoFim"))
+        ok = (isinstance(s, dict) and all(_ts(s.get(k)) for k in ("entrada", "previstoIni", "previstoFim"))
               and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(s.get("data"))) and s["previstoFim"] > s["previstoIni"]
-              and (s.get("saida") is None or (_num(s["saida"]) and s["saida"] > s["entrada"])))
+              and (s.get("saida") is None or (_ts(s["saida"]) and s["saida"] > s["entrada"])))
         if not ok:
             turnos_desc += 1
             continue
         pausas = [{"i": p["i"], "f": p.get("f")} for p in s.get("pausas") or []
-                  if isinstance(p, dict) and _num(p.get("i")) and (p.get("f") is None or (_num(p["f"]) and p["f"] > p["i"]))]
+                  if isinstance(p, dict) and _ts(p.get("i")) and (p.get("f") is None or (_ts(p["f"]) and p["f"] > p["i"]))]
         entregas = []
         for d in s.get("entregas") or []:
             try:
-                if not isinstance(d, dict) or not _num(d.get("t")):
+                if not isinstance(d, dict) or not _ts(d.get("t")):
                     raise ValueError
                 if d.get("bloco") not in BLOCOS:
                     raise ValueError
@@ -112,14 +117,14 @@ def limpar_turnos(brutos: Any, entregador: str) -> tuple[list[dict], int, int]:
                     original = None
                 entregas.append({"id": str(d.get("id") or f"{s.get('id')}-{d['t']}")[:64], "t": d["t"], "bloco": d["bloco"], "apto": apto, "andar": andar, "valor": valor,
                                  "origem": "photo" if d.get("origem") in ("photo", "foto") else "manual", "conferir": bool(d.get("conferir")), "original": original,
-                                 "editadaEm": d.get("editadaEm") if _num(d.get("editadaEm")) else None, "excluida": bool(d.get("excluida")),
-                                 "excluidaEm": d.get("excluidaEm") if _num(d.get("excluidaEm")) else None,
-                                 "tardia": bool(d.get("tardia")) and _num(d.get("registradaEm")),
-                                 "registradaEm": d.get("registradaEm") if d.get("tardia") and _num(d.get("registradaEm")) else None})
+                                 "editadaEm": d.get("editadaEm") if _ts(d.get("editadaEm")) else None, "excluida": bool(d.get("excluida")),
+                                 "excluidaEm": d.get("excluidaEm") if _ts(d.get("excluidaEm")) else None,
+                                 "tardia": bool(d.get("tardia")) and _ts(d.get("registradaEm")),
+                                 "registradaEm": d.get("registradaEm") if d.get("tardia") and _ts(d.get("registradaEm")) else None})
             except (ValueError, KeyError):
                 descartadas += 1
         saida.append({"id": str(s.get("id") or f"{entregador}-{s['data']}-{s['entrada']}")[:64], "data": s["data"], "preset": 16 if s.get("preset") == 16 else 15,
-                      "previstoIni": s["previstoIni"], "previstoFim": s["previstoFim"], "entrada": s["entrada"], "entradaOriginal": s.get("entradaOriginal") if _num(s.get("entradaOriginal")) and s.get("entradaOriginal") > s["entrada"] else None, "saida": s.get("saida"),
+                      "previstoIni": s["previstoIni"], "previstoFim": s["previstoFim"], "entrada": s["entrada"], "entradaOriginal": s.get("entradaOriginal") if _ts(s.get("entradaOriginal")) and s.get("entradaOriginal") > s["entrada"] else None, "saida": s.get("saida"),
                       "saidaAutomatica": bool(s.get("saidaAutomatica")), "pausas": pausas, "entregas": entregas})
     return saida, descartadas, turnos_desc
 
@@ -142,7 +147,7 @@ def ler_pacotes(obj: Any, arquivo: str = "") -> list[Pacote]:
         raise ArquivoInvalido("O conteúdo do arquivo não confere com o código de integridade (arquivo alterado ou corrompido).")
     turnos, desc, tdesc = limpar_turnos(obj.get("turnos"), rid)
     exp = obj.get("exportadoEm")
-    return [Pacote(rid, turnos, int(exp) if _num(exp) else 0, bool(obj.get("exemplo")), desc, tdesc, arquivo)]
+    return [Pacote(rid, turnos, int(exp) if _ts(exp) else 0, bool(obj.get("exemplo")), desc, tdesc, arquivo)]
 
 
 def ler_arquivo(caminho: Path) -> list[Pacote]:

@@ -36,7 +36,7 @@ function addDelivery(blockRaw, aptRaw, { force = false, at = null, source = 'man
   const d = { id: uid(), t, block, apt: a.apt, floor: a.floor, review: !!review, source, del: false, v: value };
   if (requestId) d.rid = requestId;
   if (late) { d.late = true; d.regAt = now(); }
-  if (late && t < s.start) { s.startOrig ??= s.start; s.start = t; }       // esqueceu até de bater a entrada: o turno passa a começar na entrega mais antiga
+  if (late && t < s.start) { if (s.startOrig == null) s.startOrig = s.start; s.start = t; }       // esqueceu até de bater a entrada: o turno passa a começar na entrega mais antiga
   s.deliveries.push(d);
   s.deliveries.sort((p, q) => p.t - q.t);     // volta para a ordem do horário
   save();

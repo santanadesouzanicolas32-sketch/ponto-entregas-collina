@@ -4,7 +4,7 @@ function stackedDays(shifts, R) {
   const days = [], total = Math.min(R.days, 62);
   for (let i = total - 1; i >= 0; i--) days.push(addDays(R.to, -i));
   const by = {};
-  for (const s of shifts) { const o = (by[s.data] ||= {}); o[s.rid] = (o[s.rid] || 0) + s.live.length; }
+  for (const s of shifts) { if (!by[s.data]) by[s.data] = {}; const o = by[s.data]; o[s.rid] = (o[s.rid] || 0) + s.live.length; }
   const tot = (d) => Object.values(by[d] || {}).reduce((a, b) => a + b, 0), mx = Math.max(1, ...days.map(tot));
   return `<div class="stk${days.length > 31 ? ' thin' : ''}">${days.map((d) => {
     const segs = ROSTER.filter((r) => by[d]?.[r.id]).map((r) => `<i class="stk-seg" style="height:${(by[d][r.id] / mx) * 100}%;background:${RCOLORS[r.id]}"></i>`).join('');
@@ -32,7 +32,7 @@ function lineChart(series) {                    // series: [{id, pts:[{w, rate}]
 function heatmap(shifts) {
   const grid = {}; let mx = 0, hmin = 24, hmax = -1, n = 0;
   for (const s of shifts) for (const d of s.live) {
-    const h = hourOf(d.t), dw = (new Date(s.data + 'T12:00:00Z').getUTCDay() + 6) % 7, k = dw * 24 + h;
+    const h = hourOf(d.t), dw = dowOf(d.t), k = dw * 24 + h;
     grid[k] = (grid[k] || 0) + 1; mx = Math.max(mx, grid[k]); hmin = Math.min(hmin, h); hmax = Math.max(hmax, h); n++;
   }
   if (!n) return '<div class="empty">Sem dados.</div>';
@@ -50,7 +50,7 @@ function hbars(entries, color) {              // entries: [[label, n, v]]
 }
 function distBlock(shifts) {
   const b = {}, a = {};
-  for (const s of shifts) for (const d of s.live) { const x = (b[d.bloco] ||= [0, 0]); x[0]++; x[1] += d.valor || 0; const k = floorBand(d.andar); if (k) { const y = (a[k] ||= [0, 0]); y[0]++; y[1] += d.valor || 0; } }
+  for (const s of shifts) for (const d of s.live) { const x = getOr(b, d.bloco, () => [0, 0]); x[0]++; x[1] += d.valor || 0; const k = floorBand(d.andar); if (k) { const y = getOr(a, k, () => [0, 0]); y[0]++; y[1] += d.valor || 0; } }
   return {
     blocks: CFG.blocks.map((k) => [k, b[k]?.[0] || 0, b[k]?.[1] || 0]),
     bands: FLOOR_BANDS.map(([k]) => [k === 'SS' ? 'Subsolo' : `${k.replace('-', '–')}º andar`, a[k]?.[0] || 0, a[k]?.[1] || 0]),

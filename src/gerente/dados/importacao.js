@@ -8,19 +8,19 @@ function cleanShifts(raw, riderId) {
   if (raw.length > 5000) throw new ImportErr('Arquivo grande demais.');
   const out = []; let dropped = 0, droppedShifts = 0;
   for (const s of raw) {
-    if (!s || !isNum(s.entrada) || !isNum(s.previstoIni) || !isNum(s.previstoFim) || !/^\d{4}-\d{2}-\d{2}$/.test(String(s.data)) || s.previstoFim <= s.previstoIni
-      || (s.saida != null && (!isNum(s.saida) || s.saida <= s.entrada))) { droppedShifts++; continue; }
+    if (!s || !isTs(s.entrada) || !isTs(s.previstoIni) || !isTs(s.previstoFim) || !/^\d{4}-\d{2}-\d{2}$/.test(String(s.data)) || s.previstoFim <= s.previstoIni
+      || (s.saida != null && (!isTs(s.saida) || s.saida <= s.entrada))) { droppedShifts++; continue; }
     const sh = { id: str(s.id, 64) || `${riderId}-${s.data}-${s.entrada}`, data: s.data, preset: s.preset === 16 ? 16 : 15, previstoIni: s.previstoIni, previstoFim: s.previstoFim,
-      entrada: s.entrada, entradaOriginal: isNum(s.entradaOriginal) && s.entradaOriginal > s.entrada ? s.entradaOriginal : null, saida: s.saida ?? null, saidaAutomatica: !!s.saidaAutomatica, pausas: [], entregas: [] };
-    for (const p of Array.isArray(s.pausas) ? s.pausas : []) if (p && isNum(p.i) && (p.f == null || (isNum(p.f) && p.f > p.i))) sh.pausas.push({ i: p.i, f: p.f ?? null });
+      entrada: s.entrada, entradaOriginal: isTs(s.entradaOriginal) && s.entradaOriginal > s.entrada ? s.entradaOriginal : null, saida: s.saida ?? null, saidaAutomatica: !!s.saidaAutomatica, pausas: [], entregas: [] };
+    for (const p of Array.isArray(s.pausas) ? s.pausas : []) if (p && isTs(p.i) && (p.f == null || (isTs(p.f) && p.f > p.i))) sh.pausas.push({ i: p.i, f: p.f ?? null });
     for (const d of Array.isArray(s.entregas) ? s.entregas : []) {
       try {
-        if (!d || !isNum(d.t)) throw new Error('t');
+        if (!d || !isTs(d.t)) throw new Error('t');
         const b = normalizeBlock(d.bloco), a = normalizeApt(d.apto);
         const e = { id: str(d.id, 64) || `${sh.id}-${d.t}`, t: d.t, bloco: b, apto: a.apt, andar: a.floor, valor: isInt(d.valor) && d.valor >= 0 && d.valor <= 1000000 ? d.valor : null,
-          origem: d.origem === 'foto' || d.origem === 'photo' ? 'photo' : 'manual', conferir: !!d.conferir, original: null, editadaEm: isNum(d.editadaEm) ? d.editadaEm : null,
-          excluida: !!d.excluida, excluidaEm: isNum(d.excluidaEm) ? d.excluidaEm : null,
-          tardia: !!d.tardia && isNum(d.registradaEm), registradaEm: d.tardia && isNum(d.registradaEm) ? d.registradaEm : null };
+          origem: d.origem === 'foto' || d.origem === 'photo' ? 'photo' : 'manual', conferir: !!d.conferir, original: null, editadaEm: isTs(d.editadaEm) ? d.editadaEm : null,
+          excluida: !!d.excluida, excluidaEm: isTs(d.excluidaEm) ? d.excluidaEm : null,
+          tardia: !!d.tardia && isTs(d.registradaEm), registradaEm: d.tardia && isTs(d.registradaEm) ? d.registradaEm : null };
         if (d.original && typeof d.original === 'object') {
           try { const ob = normalizeBlock(d.original.bloco), oa = normalizeApt(d.original.apto); e.original = { bloco: ob, apto: oa.apt, valor: isInt(d.original.valor) ? d.original.valor : null }; } catch { /* ignora */ }
         }
@@ -49,7 +49,7 @@ async function parsePackage(o) {
     const calc = 'sha256:' + await sha256hex(canonical({ entregador: riderId, turnos: turnosRaw }));
     if (calc !== o.integridade) throw new ImportErr('O conteúdo do arquivo não confere com o código de integridade (arquivo alterado ou corrompido).');
     integro = true;
-    exp = isNum(o.exportadoEm) ? o.exportadoEm : 0;
+    exp = isTs(o.exportadoEm) ? o.exportadoEm : 0;
   } else throw new ImportErr('Formato não reconhecido. Use o arquivo gerado por “Enviar fechamento ao gerente”.');
   const c = cleanShifts(turnosRaw, riderId);
   return [{ rider: riderId, turnos: c.shifts, exp, exemplo: !!o.exemplo, integro, descartadas: c.dropped, turnosDescartados: c.droppedShifts }];
@@ -58,7 +58,8 @@ async function parsePackage(o) {
 /** Junta um pacote aos dados já guardados. Para o mesmo turno vale a versão do arquivo mais recente. */
 function mergePackage(p) {
   const r = riderById(p.rider);
-  const cur = (ST.riders[p.rider] ||= { id: r.id, nome: r.nome, exportadoEm: 0, turnos: [] });
+  if (!ST.riders[p.rider]) ST.riders[p.rider] = { id: r.id, nome: r.nome, exportadoEm: 0, turnos: [] };
+  const cur = ST.riders[p.rider];
   const map = new Map(cur.turnos.map((s) => [s.id, s]));
   let novos = 0, atualizados = 0, mantidos = 0;
   for (const s of p.turnos) {

@@ -486,6 +486,10 @@ function parseMoney(text) {
 const isNum = (n) => typeof n === 'number' && Number.isFinite(n);
 const isInt = (n) => Number.isInteger(n);
 const str = (v, max) => String(v ?? '').slice(0, max);
+/** Devolve o.k; se ainda não existe, cria com make() (no lugar de ||=, que celulares antigos não entendem). */
+const getOr = (o, k, make) => (o[k] === undefined ? (o[k] = make()) : o[k]);
+/** Instante plausível (anos 2000 a 2100): valores fora disso quebram a formatação de datas e só podem vir de arquivo corrompido. */
+const isTs = (n) => isNum(n) && n > 946684800000 && n < 4102444800000;
 
 /* Regras do pedido: bloco, apartamento e faixa de andar. */
 /* ---------------- regras de ponto (porte das regras do servidor) ---------------- */
@@ -792,7 +796,7 @@ async function mSave() {
 const ignKey = (rid, sid) => `${rid}|${sid}`;
 const isIgnored = (rid, sid) => !!ST.ignorados?.[ignKey(rid, sid)];
 const activeTurnos = (rid) => (ST.riders[rid]?.turnos || []).filter((s) => !isIgnored(rid, s.id));
-async function ignoreShift(rid, sid, motivo) { (ST.ignorados ||= {})[ignKey(rid, sid)] = { em: now(), motivo: str(motivo, 60) }; await mSave(); }
+async function ignoreShift(rid, sid, motivo) { if (!ST.ignorados) ST.ignorados = {}; ST.ignorados[ignKey(rid, sid)] = { em: now(), motivo: str(motivo, 60) }; await mSave(); }
 async function restoreShift(rid, sid) { if (ST.ignorados) delete ST.ignorados[ignKey(rid, sid)]; await mSave(); }
 function ignoredList() {
   const out = [];
@@ -813,19 +817,19 @@ function cleanShifts(raw, riderId) {
   if (raw.length > 5000) throw new ImportErr('Arquivo grande demais.');
   const out = []; let dropped = 0, droppedShifts = 0;
   for (const s of raw) {
-    if (!s || !isNum(s.entrada) || !isNum(s.previstoIni) || !isNum(s.previstoFim) || !/^\d{4}-\d{2}-\d{2}$/.test(String(s.data)) || s.previstoFim <= s.previstoIni
-      || (s.saida != null && (!isNum(s.saida) || s.saida <= s.entrada))) { droppedShifts++; continue; }
+    if (!s || !isTs(s.entrada) || !isTs(s.previstoIni) || !isTs(s.previstoFim) || !/^\d{4}-\d{2}-\d{2}$/.test(String(s.data)) || s.previstoFim <= s.previstoIni
+      || (s.saida != null && (!isTs(s.saida) || s.saida <= s.entrada))) { droppedShifts++; continue; }
     const sh = { id: str(s.id, 64) || `${riderId}-${s.data}-${s.entrada}`, data: s.data, preset: s.preset === 16 ? 16 : 15, previstoIni: s.previstoIni, previstoFim: s.previstoFim,
-      entrada: s.entrada, entradaOriginal: isNum(s.entradaOriginal) && s.entradaOriginal > s.entrada ? s.entradaOriginal : null, saida: s.saida ?? null, saidaAutomatica: !!s.saidaAutomatica, pausas: [], entregas: [] };
-    for (const p of Array.isArray(s.pausas) ? s.pausas : []) if (p && isNum(p.i) && (p.f == null || (isNum(p.f) && p.f > p.i))) sh.pausas.push({ i: p.i, f: p.f ?? null });
+      entrada: s.entrada, entradaOriginal: isTs(s.entradaOriginal) && s.entradaOriginal > s.entrada ? s.entradaOriginal : null, saida: s.saida ?? null, saidaAutomatica: !!s.saidaAutomatica, pausas: [], entregas: [] };
+    for (const p of Array.isArray(s.pausas) ? s.pausas : []) if (p && isTs(p.i) && (p.f == null || (isTs(p.f) && p.f > p.i))) sh.pausas.push({ i: p.i, f: p.f ?? null });
     for (const d of Array.isArray(s.entregas) ? s.entregas : []) {
       try {
-        if (!d || !isNum(d.t)) throw new Error('t');
+        if (!d || !isTs(d.t)) throw new Error('t');
         const b = normalizeBlock(d.bloco), a = normalizeApt(d.apto);
         const e = { id: str(d.id, 64) || `${sh.id}-${d.t}`, t: d.t, bloco: b, apto: a.apt, andar: a.floor, valor: isInt(d.valor) && d.valor >= 0 && d.valor <= 1000000 ? d.valor : null,
-          origem: d.origem === 'foto' || d.origem === 'photo' ? 'photo' : 'manual', conferir: !!d.conferir, original: null, editadaEm: isNum(d.editadaEm) ? d.editadaEm : null,
-          excluida: !!d.excluida, excluidaEm: isNum(d.excluidaEm) ? d.excluidaEm : null,
-          tardia: !!d.tardia && isNum(d.registradaEm), registradaEm: d.tardia && isNum(d.registradaEm) ? d.registradaEm : null };
+          origem: d.origem === 'foto' || d.origem === 'photo' ? 'photo' : 'manual', conferir: !!d.conferir, original: null, editadaEm: isTs(d.editadaEm) ? d.editadaEm : null,
+          excluida: !!d.excluida, excluidaEm: isTs(d.excluidaEm) ? d.excluidaEm : null,
+          tardia: !!d.tardia && isTs(d.registradaEm), registradaEm: d.tardia && isTs(d.registradaEm) ? d.registradaEm : null };
         if (d.original && typeof d.original === 'object') {
           try { const ob = normalizeBlock(d.original.bloco), oa = normalizeApt(d.original.apto); e.original = { bloco: ob, apto: oa.apt, valor: isInt(d.original.valor) ? d.original.valor : null }; } catch { /* ignora */ }
         }
@@ -854,7 +858,7 @@ async function parsePackage(o) {
     const calc = 'sha256:' + await sha256hex(canonical({ entregador: riderId, turnos: turnosRaw }));
     if (calc !== o.integridade) throw new ImportErr('O conteúdo do arquivo não confere com o código de integridade (arquivo alterado ou corrompido).');
     integro = true;
-    exp = isNum(o.exportadoEm) ? o.exportadoEm : 0;
+    exp = isTs(o.exportadoEm) ? o.exportadoEm : 0;
   } else throw new ImportErr('Formato não reconhecido. Use o arquivo gerado por “Enviar fechamento ao gerente”.');
   const c = cleanShifts(turnosRaw, riderId);
   return [{ rider: riderId, turnos: c.shifts, exp, exemplo: !!o.exemplo, integro, descartadas: c.dropped, turnosDescartados: c.droppedShifts }];
@@ -863,7 +867,8 @@ async function parsePackage(o) {
 /** Junta um pacote aos dados já guardados. Para o mesmo turno vale a versão do arquivo mais recente. */
 function mergePackage(p) {
   const r = riderById(p.rider);
-  const cur = (ST.riders[p.rider] ||= { id: r.id, nome: r.nome, exportadoEm: 0, turnos: [] });
+  if (!ST.riders[p.rider]) ST.riders[p.rider] = { id: r.id, nome: r.nome, exportadoEm: 0, turnos: [] };
+  const cur = ST.riders[p.rider];
   const map = new Map(cur.turnos.map((s) => [s.id, s]));
   let novos = 0, atualizados = 0, mantidos = 0;
   for (const s of p.turnos) {
@@ -1016,7 +1021,7 @@ const weekStart = (ymd) => { const d = new Date(ymd + 'T12:00:00Z'); d.setUTCDat
 /** Série semanal de entregas por hora de um grupo de turnos. */
 function weeklyRate(shifts) {
   const m = {};
-  for (const s of shifts) { const k = weekStart(s.data); const o = (m[k] ||= { n: 0, net: 0 }); o.n += s.live.length; o.net += s.sm.net; }
+  for (const s of shifts) { const k = weekStart(s.data); if (!m[k]) m[k] = { n: 0, net: 0 }; const o = m[k]; o.n += s.live.length; o.net += s.sm.net; }
   return Object.entries(m).sort((a, b) => a[0].localeCompare(b[0])).map(([w, o]) => ({ w, rate: o.net >= 3600 ? o.n / (o.net / 3600) : null, n: o.n, net: o.net }));
 }
 /** Tendência: média de entregas/h dos últimos turnos contra os turnos anteriores (precisa de pelo menos 6 turnos fechados). */
@@ -1203,7 +1208,7 @@ function stackedDays(shifts, R) {
   const days = [], total = Math.min(R.days, 62);
   for (let i = total - 1; i >= 0; i--) days.push(addDays(R.to, -i));
   const by = {};
-  for (const s of shifts) { const o = (by[s.data] ||= {}); o[s.rid] = (o[s.rid] || 0) + s.live.length; }
+  for (const s of shifts) { if (!by[s.data]) by[s.data] = {}; const o = by[s.data]; o[s.rid] = (o[s.rid] || 0) + s.live.length; }
   const tot = (d) => Object.values(by[d] || {}).reduce((a, b) => a + b, 0), mx = Math.max(1, ...days.map(tot));
   return `<div class="stk${days.length > 31 ? ' thin' : ''}">${days.map((d) => {
     const segs = ROSTER.filter((r) => by[d]?.[r.id]).map((r) => `<i class="stk-seg" style="height:${(by[d][r.id] / mx) * 100}%;background:${RCOLORS[r.id]}"></i>`).join('');
@@ -1231,7 +1236,7 @@ function lineChart(series) {                    // series: [{id, pts:[{w, rate}]
 function heatmap(shifts) {
   const grid = {}; let mx = 0, hmin = 24, hmax = -1, n = 0;
   for (const s of shifts) for (const d of s.live) {
-    const h = hourOf(d.t), dw = (new Date(s.data + 'T12:00:00Z').getUTCDay() + 6) % 7, k = dw * 24 + h;
+    const h = hourOf(d.t), dw = dowOf(d.t), k = dw * 24 + h;
     grid[k] = (grid[k] || 0) + 1; mx = Math.max(mx, grid[k]); hmin = Math.min(hmin, h); hmax = Math.max(hmax, h); n++;
   }
   if (!n) return '<div class="empty">Sem dados.</div>';
@@ -1249,7 +1254,7 @@ function hbars(entries, color) {              // entries: [[label, n, v]]
 }
 function distBlock(shifts) {
   const b = {}, a = {};
-  for (const s of shifts) for (const d of s.live) { const x = (b[d.bloco] ||= [0, 0]); x[0]++; x[1] += d.valor || 0; const k = floorBand(d.andar); if (k) { const y = (a[k] ||= [0, 0]); y[0]++; y[1] += d.valor || 0; } }
+  for (const s of shifts) for (const d of s.live) { const x = getOr(b, d.bloco, () => [0, 0]); x[0]++; x[1] += d.valor || 0; const k = floorBand(d.andar); if (k) { const y = getOr(a, k, () => [0, 0]); y[0]++; y[1] += d.valor || 0; } }
   return {
     blocks: CFG.blocks.map((k) => [k, b[k]?.[0] || 0, b[k]?.[1] || 0]),
     bands: FLOOR_BANDS.map(([k]) => [k === 'SS' ? 'Subsolo' : `${k.replace('-', '–')}º andar`, a[k]?.[0] || 0, a[k]?.[1] || 0]),

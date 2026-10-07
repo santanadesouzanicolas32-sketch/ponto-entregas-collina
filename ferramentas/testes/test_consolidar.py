@@ -222,3 +222,12 @@ def test_entrada_recuada_e_preservada_so_se_for_posterior_a_entrada():
     assert c.ler_pacotes(com_integridade(obj))[0].turnos[0]["entradaOriginal"] is None
     del t["entradaOriginal"]                                      # arquivo antigo, sem o campo
     assert c.ler_pacotes(com_integridade(obj))[0].turnos[0]["entradaOriginal"] is None
+
+
+def test_instantes_absurdos_sao_descartados():
+    obj = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    obj["turnos"][0]["entregas"][0]["t"] = 10 ** 20
+    obj["turnos"][0]["entregas"][1]["editadaEm"] = -5
+    p = c.ler_pacotes(com_integridade(obj))[0]
+    assert len(p.turnos[0]["entregas"]) == 2 and p.descartadas == 1
+    assert p.turnos[0]["entregas"][0]["editadaEm"] is None

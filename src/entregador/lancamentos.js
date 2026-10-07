@@ -29,7 +29,7 @@ function applyLancamentos() {
     }
     for (const i of items) {
       if (s.deliveries.some((d) => !d.del && d.block === i.block && d.apt === i.n.apt && Math.abs(d.t - i.t) <= 300000)) continue;
-      if (i.t < s.start) { s.startOrig ??= s.start; s.start = i.t; }
+      if (i.t < s.start) { if (s.startOrig == null) s.startOrig = s.start; s.start = i.t; }
       s.deliveries.push({ id: uid(), t: i.t, block: i.block, apt: i.n.apt, floor: i.n.floor, review: false, source: 'manual', del: false, v: i.v, late: true, regAt: now() });
       added++;
     }

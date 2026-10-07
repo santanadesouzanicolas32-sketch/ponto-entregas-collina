@@ -61,6 +61,13 @@ Primeira vez: `npm install` (instala eslint e jsdom) e `pip install -r ferrament
   (`ferramentas/testes/fixtures/export_js.json`).
 - Nome de função novo: o lint recusa se já existir outro com o mesmo nome em qualquer arquivo da mesma página.
 
+## Compatibilidade e robustez
+
+- O JavaScript é conferido como **ES2020** (sem `||=`/`??=`): celulares antigos de entregadores que não entendem sintaxe mais nova
+  deixariam a página em branco. Para "criar se não existir" use `getOr` (`compartilhado/validacao.js`).
+- Instantes lidos de fora (banco do aparelho, arquivos, Python) passam por `isTs`/`_ts` (anos 2000 a 2100); fora disso o registro é descartado.
+- Há testes de robustez que embaralham campos de arquivos e bancos (300 casos cada) e exigem que nada quebre nem mostre `undefined`/`NaN`.
+
 ## Contratos
 
 **Fechamento v2** (`ponto-collina/entregas`): `{formato, versao: 2, entregador: {id, nome}, exportadoEm, turnos[], integridade}`;

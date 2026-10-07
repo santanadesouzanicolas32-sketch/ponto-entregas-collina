@@ -9,7 +9,7 @@ const raiz = path.resolve(import.meta.dirname, '..');
 const manifesto = JSON.parse(fs.readFileSync(path.join(raiz, '.teste', 'manifesto.json'), 'utf8'));
 const ler = (f) => fs.readFileSync(path.join(raiz, 'src', f), 'utf8');
 
-const comuns = { ecmaVersion: 2022, sourceType: 'script' };
+const comuns = { ecmaVersion: 2020, sourceType: 'script' };       // 2020: celulares antigos dos entregadores não entendem sintaxe mais nova
 let problemas = 0;
 const aviso = (arquivo, linha, regra, msg) => { problemas++; console.log(`  ${arquivo}:${linha}  ${msg}  [${regra}]`); };
 

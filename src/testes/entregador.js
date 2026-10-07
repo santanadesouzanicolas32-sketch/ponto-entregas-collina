@@ -20,6 +20,7 @@ function runSelfTests() {
   const sumOf = (start, end, breaks = [], nowMs = null, sched = at(2026, 10, 6, 15), pe = at(2026, 10, 6, 23, 20)) =>
     summarize({ start, end, sched, plannedEnd: pe, breaks: breaks.map(([s, e]) => ({ s, e })) }, nowMs ?? end ?? start);
   const MIN = 60000;
+  const B = 1.7e12;                                   // um instante qualquer plausível (2023) para os modelos de dados
 
   try {
     /* ---- apartamento / bloco ---- */
@@ -182,12 +183,12 @@ function runSelfTests() {
     /* ---- dados: validação de backup ---- */
     T('backup: recusa lixo e limpa dados inválidos', () => {
       for (const bad of [null, 5, 'x', {}, { shifts: 'a' }]) { try { sanitizeDb(bad); throw new Error('aceitou lixo'); } catch (e) { ok(/inválido/.test(e.message), 'mensagem: ' + e.message); } }
-      const good = { shifts: [{ id: 'a', date: '2026-10-06', preset: 15, sched: 1, plannedEnd: 5, start: 2, end: 4, breaks: [{ s: 2, e: 1 }, { s: 2, e: 3 }], deliveries: [{ t: 3, block: 'A1', apt: '241' }, { t: 3, block: 'Z9', apt: '241' }, { t: 3, block: 'A1', apt: '999' }, { t: 'x', block: 'A1', apt: '241' }] }, { date: 'lixo' }], user: { name: '<img src=x onerror=1>', goal: -5 } };
+      const good = { shifts: [{ id: 'a', date: '2026-10-06', preset: 15, sched: B + 1, plannedEnd: B + 5, start: B + 2, end: B + 4, breaks: [{ s: B + 2, e: B + 1 }, { s: B + 2, e: B + 3 }], deliveries: [{ t: B + 3, block: 'A1', apt: '241' }, { t: B + 3, block: 'Z9', apt: '241' }, { t: B + 3, block: 'A1', apt: '999' }, { t: 'x', block: 'A1', apt: '241' }] }, { date: 'lixo' }], user: { name: '<img src=x onerror=1>', goal: -5 } };
       const c = sanitizeDb(good); eq([c.shifts.length, c.shifts[0].breaks.length, c.shifts[0].deliveries.length, c.user.goal], [1, 1, 1, 60]);
     });
     T('backup: só um turno aberto', () => {
       const mk = (id, st) => ({ id, date: '2026-10-06', preset: 15, sched: st, plannedEnd: st + 1e7, start: st, end: null, breaks: [], deliveries: [] });
-      eq(sanitizeDb({ shifts: [mk('a', 1000), mk('b', 2000)] }).shifts.filter((s) => s.end == null).length, 1);
+      eq(sanitizeDb({ shifts: [mk('a', B + 1000), mk('b', B + 2000)] }).shifts.filter((s) => s.end == null).length, 1);
     });
     /* ---- valor das entregas ---- */
     T('valor: leitura de dinheiro em vários formatos', () => {
@@ -210,7 +211,7 @@ function runSelfTests() {
       const e = addDelivery('A1', '241').delivery; clock(at(2026, 10, 6, 15, 40)); throwsCode(() => undoDelivery(e.id), 'TOO_LATE');
     });
     T('valor: backup descarta valor inválido', () => {
-      const s = { id: 'a', date: '2026-10-06', preset: 15, sched: 1, plannedEnd: 5, start: 2, end: 4, breaks: [], deliveries: [{ t: 3, block: 'A1', apt: '241', v: 5290 }, { t: 3, block: 'A1', apt: '241', v: -5 }, { t: 3, block: 'A1', apt: '241', v: 'x' }, { t: 3, block: 'A1', apt: '241', v: 99999999 }] };
+      const s = { id: 'a', date: '2026-10-06', preset: 15, sched: B + 1, plannedEnd: B + 5, start: B + 2, end: B + 4, breaks: [], deliveries: [{ t: B + 3, block: 'A1', apt: '241', v: 5290 }, { t: B + 3, block: 'A1', apt: '241', v: -5 }, { t: B + 3, block: 'A1', apt: '241', v: 'x' }, { t: B + 3, block: 'A1', apt: '241', v: 99999999 }] };
       eq(sanitizeDb({ shifts: [s] }).shifts[0].deliveries.map((d) => d.v), [5290, null, null, null]);
     });
     T('comanda: valor pelo rótulo TOTAL / VALOR / A PAGAR', () => {
@@ -274,7 +275,7 @@ function runSelfTests() {
       const t = periodTotals(7); eq([t.shifts, t.deliveries, t.sales], [1, 4, 5000]);
     });
     T('dados antigos de teste/exemplo são descartados ao carregar', () => {
-      const mk = (id, extra) => ({ id, date: '2026-10-0' + id, preset: 15, sched: 1, plannedEnd: 5, start: 2, end: 4, breaks: [], deliveries: [{ t: 3, block: 'A1', apt: '241' }], ...extra });
+      const mk = (id, extra) => ({ id, date: '2026-10-0' + id, preset: 15, sched: B + 1, plannedEnd: B + 5, start: B + 2, end: B + 4, breaks: [], deliveries: [{ t: B + 3, block: 'A1', apt: '241' }], ...extra });
       const c = sanitizeDb({ shifts: [mk('1', {}), mk('2', { test: true }), mk('3', { demo: true })] }); eq(c.shifts.map((s) => s.id), ['1']);
       eq(Object.keys(c).sort(), ['imported', 'prefs', 'shifts', 'user', 'v'], 'sem registro de alterações');
     });
@@ -390,6 +391,24 @@ function runSelfTests() {
       try { startShift(15); eq(n >= 1, true); } finally { SAVE_HOOKS.splice(SAVE_HOOKS.indexOf(f), 1); persist = false; try { localStorage.removeItem(KEY); } catch { /* ignore */ } }
     });
 
+    T('robustez: 300 bancos corrompidos (campos trocados/apagados) não derrubam a leitura nem os cálculos', () => {
+      let seed = 777; const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+      clock(at(2026, 10, 6, 17, 0)); startShift(15); clock(at(2026, 10, 6, 17, 5)); addDelivery('A1', '121', { value: 1000 }); clock(at(2026, 10, 6, 17, 20)); addDelivery('B2', 'SS5');
+      clock(at(2026, 10, 6, 17, 30)); startBreak(); clock(at(2026, 10, 6, 17, 40)); endBreak(); clock(at(2026, 10, 6, 18, 0)); addDelivery('C1', '241', { at: at(2026, 10, 6, 17, 10), late: true });
+      const base = JSON.parse(JSON.stringify(DB)), valores = [null, 'x', '', -1, 0, 1e20, {}, [], true, '2026-13-45', 1.5, [1, 2]];
+      const paths = (o, pre = []) => (o && typeof o === 'object' ? Object.keys(o).flatMap((k) => [[...pre, k], ...paths(o[k], [...pre, k])]) : []);
+      const falhas = [];
+      for (let i = 0; i < 300; i++) {
+        const o = JSON.parse(JSON.stringify(base)), alvo = paths(o), p = alvo[Math.floor(rnd() * alvo.length)], v = valores[Math.floor(rnd() * valores.length)];
+        let ref = o; for (const k of p.slice(0, -1)) ref = ref[k]; if (rnd() < 0.3) delete ref[p[p.length - 1]]; else ref[p[p.length - 1]] = v;
+        try {
+          DB = sanitizeDb(o); persist = false; DB.user = DB.user || { name: 'Nicolas', id: 'nicolas', goal: 60 };
+          currentView(); periodTotals(7); buildCsv(7); biReset('tudo'); const all = biRows(), R = biRange('tudo', all); biKpis(biApply(all, R), R);
+          void exportShifts(DB); void identityLocked();
+        } catch (e) { if (!/inválido|grande demais/.test(e.message)) falhas.push(`${p.join('.')}=${JSON.stringify(v)}: ${e.message}`); }
+      }
+      ok(!falhas.length, falhas.slice(0, 3).join(' | ') + ` (${falhas.length} falhas)`);
+    });
     /* ---- entrega esquecida, lançada depois ---- */
     T('esquecida: entra na ordem do horário, fica marcada e guarda quando foi registrada', () => {
       startShift(15);

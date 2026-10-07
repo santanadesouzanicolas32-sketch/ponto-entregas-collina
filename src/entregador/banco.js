@@ -21,26 +21,26 @@ function sanitizeDb(d) {
   out.prefs.autoPhoto = d.prefs?.autoPhoto !== false;
   out.imported = (Array.isArray(d.imported) ? d.imported : []).filter((x) => typeof x === 'string').slice(0, 50).map((x) => x.slice(0, 64));
   for (const s of d.shifts) {
-    if (!s || s.test || s.demo || !isNum(s.start) || !isNum(s.sched) || !isNum(s.plannedEnd) || !/^\d{4}-\d{2}-\d{2}$/.test(String(s.date))) continue;
-    if (s.plannedEnd <= s.sched || (s.end != null && (!isNum(s.end) || s.end <= s.start))) continue;
+    if (!s || s.test || s.demo || !isTs(s.start) || !isTs(s.sched) || !isTs(s.plannedEnd) || !/^\d{4}-\d{2}-\d{2}$/.test(String(s.date))) continue;
+    if (s.plannedEnd <= s.sched || (s.end != null && (!isTs(s.end) || s.end <= s.start))) continue;
     const sh = {
       id: str(s.id, 64) || uid(), date: s.date, preset: s.preset === 16 ? 16 : 15, sched: s.sched, plannedEnd: s.plannedEnd,
       start: s.start, end: s.end ?? null, closeReason: s.closeReason === 'auto' ? 'auto' : null, breaks: [], deliveries: [],
     };
-    if (isNum(s.startOrig) && s.startOrig > s.start) sh.startOrig = s.startOrig;
+    if (isTs(s.startOrig) && s.startOrig > s.start) sh.startOrig = s.startOrig;
     for (const b of Array.isArray(s.breaks) ? s.breaks : []) {
-      if (isNum(b?.s) && (b.e == null || (isNum(b.e) && b.e > b.s))) sh.breaks.push({ s: b.s, e: b.e ?? null });
+      if (isTs(b?.s) && (b.e == null || (isTs(b.e) && b.e > b.s))) sh.breaks.push({ s: b.s, e: b.e ?? null });
     }
     for (const x of Array.isArray(s.deliveries) ? s.deliveries : []) {
-      if (!x || !isNum(x.t)) continue;
+      if (!x || !isTs(x.t)) continue;
       try {
         const blk = normalizeBlock(x.block), a = normalizeApt(x.apt);
         const dd0 = { id: str(x.id, 64) || uid(), t: x.t, block: blk, apt: a.apt, floor: a.floor, review: !!x.review, source: x.source === 'photo' ? 'photo' : 'manual', del: !!x.del, v: Number.isInteger(x.v) && x.v >= 0 && x.v <= 1000000 ? x.v : null };
         const dd = sh.deliveries[sh.deliveries.push(dd0) - 1];
         if (x.rid) dd.rid = str(x.rid, 64);
-        if (isNum(x.edAt)) dd.edAt = x.edAt;
-        if (isNum(x.delAt)) dd.delAt = x.delAt;
-        if (x.late && isNum(x.regAt)) { dd.late = true; dd.regAt = x.regAt; }
+        if (isTs(x.edAt)) dd.edAt = x.edAt;
+        if (isTs(x.delAt)) dd.delAt = x.delAt;
+        if (x.late && isTs(x.regAt)) { dd.late = true; dd.regAt = x.regAt; }
         if (x.orig && typeof x.orig === 'object') {
           try { const ob = normalizeBlock(x.orig.block), oa = normalizeApt(x.orig.apt); dd.orig = { block: ob, apt: oa.apt, v: Number.isInteger(x.orig.v) && x.orig.v >= 0 && x.orig.v <= 1000000 ? x.orig.v : null }; } catch { /* original inválido é ignorado */ }
         }

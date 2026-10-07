@@ -511,6 +511,10 @@ function parseMoney(text) {
 const isNum = (n) => typeof n === 'number' && Number.isFinite(n);
 const isInt = (n) => Number.isInteger(n);
 const str = (v, max) => String(v ?? '').slice(0, max);
+/** Devolve o.k; se ainda não existe, cria com make() (no lugar de ||=, que celulares antigos não entendem). */
+const getOr = (o, k, make) => (o[k] === undefined ? (o[k] = make()) : o[k]);
+/** Instante plausível (anos 2000 a 2100): valores fora disso quebram a formatação de datas e só podem vir de arquivo corrompido. */
+const isTs = (n) => isNum(n) && n > 946684800000 && n < 4102444800000;
 
 /* Regras do pedido: bloco, apartamento e faixa de andar. */
 /* ---------------- regras de ponto (porte das regras do servidor) ---------------- */
@@ -787,26 +791,26 @@ function sanitizeDb(d) {
   out.prefs.autoPhoto = d.prefs?.autoPhoto !== false;
   out.imported = (Array.isArray(d.imported) ? d.imported : []).filter((x) => typeof x === 'string').slice(0, 50).map((x) => x.slice(0, 64));
   for (const s of d.shifts) {
-    if (!s || s.test || s.demo || !isNum(s.start) || !isNum(s.sched) || !isNum(s.plannedEnd) || !/^\d{4}-\d{2}-\d{2}$/.test(String(s.date))) continue;
-    if (s.plannedEnd <= s.sched || (s.end != null && (!isNum(s.end) || s.end <= s.start))) continue;
+    if (!s || s.test || s.demo || !isTs(s.start) || !isTs(s.sched) || !isTs(s.plannedEnd) || !/^\d{4}-\d{2}-\d{2}$/.test(String(s.date))) continue;
+    if (s.plannedEnd <= s.sched || (s.end != null && (!isTs(s.end) || s.end <= s.start))) continue;
     const sh = {
       id: str(s.id, 64) || uid(), date: s.date, preset: s.preset === 16 ? 16 : 15, sched: s.sched, plannedEnd: s.plannedEnd,
       start: s.start, end: s.end ?? null, closeReason: s.closeReason === 'auto' ? 'auto' : null, breaks: [], deliveries: [],
     };
-    if (isNum(s.startOrig) && s.startOrig > s.start) sh.startOrig = s.startOrig;
+    if (isTs(s.startOrig) && s.startOrig > s.start) sh.startOrig = s.startOrig;
     for (const b of Array.isArray(s.breaks) ? s.breaks : []) {
-      if (isNum(b?.s) && (b.e == null || (isNum(b.e) && b.e > b.s))) sh.breaks.push({ s: b.s, e: b.e ?? null });
+      if (isTs(b?.s) && (b.e == null || (isTs(b.e) && b.e > b.s))) sh.breaks.push({ s: b.s, e: b.e ?? null });
     }
     for (const x of Array.isArray(s.deliveries) ? s.deliveries : []) {
-      if (!x || !isNum(x.t)) continue;
+      if (!x || !isTs(x.t)) continue;
       try {
         const blk = normalizeBlock(x.block), a = normalizeApt(x.apt);
         const dd0 = { id: str(x.id, 64) || uid(), t: x.t, block: blk, apt: a.apt, floor: a.floor, review: !!x.review, source: x.source === 'photo' ? 'photo' : 'manual', del: !!x.del, v: Number.isInteger(x.v) && x.v >= 0 && x.v <= 1000000 ? x.v : null };
         const dd = sh.deliveries[sh.deliveries.push(dd0) - 1];
         if (x.rid) dd.rid = str(x.rid, 64);
-        if (isNum(x.edAt)) dd.edAt = x.edAt;
-        if (isNum(x.delAt)) dd.delAt = x.delAt;
-        if (x.late && isNum(x.regAt)) { dd.late = true; dd.regAt = x.regAt; }
+        if (isTs(x.edAt)) dd.edAt = x.edAt;
+        if (isTs(x.delAt)) dd.delAt = x.delAt;
+        if (x.late && isTs(x.regAt)) { dd.late = true; dd.regAt = x.regAt; }
         if (x.orig && typeof x.orig === 'object') {
           try { const ob = normalizeBlock(x.orig.block), oa = normalizeApt(x.orig.apt); dd.orig = { block: ob, apt: oa.apt, v: Number.isInteger(x.orig.v) && x.orig.v >= 0 && x.orig.v <= 1000000 ? x.orig.v : null }; } catch { /* original inválido é ignorado */ }
         }
@@ -958,7 +962,7 @@ function addDelivery(blockRaw, aptRaw, { force = false, at = null, source = 'man
   const d = { id: uid(), t, block, apt: a.apt, floor: a.floor, review: !!review, source, del: false, v: value };
   if (requestId) d.rid = requestId;
   if (late) { d.late = true; d.regAt = now(); }
-  if (late && t < s.start) { s.startOrig ??= s.start; s.start = t; }       // esqueceu até de bater a entrada: o turno passa a começar na entrega mais antiga
+  if (late && t < s.start) { if (s.startOrig == null) s.startOrig = s.start; s.start = t; }       // esqueceu até de bater a entrada: o turno passa a começar na entrega mais antiga
   s.deliveries.push(d);
   s.deliveries.sort((p, q) => p.t - q.t);     // volta para a ordem do horário
   save();
@@ -1029,7 +1033,7 @@ function applyLancamentos() {
     }
     for (const i of items) {
       if (s.deliveries.some((d) => !d.del && d.block === i.block && d.apt === i.n.apt && Math.abs(d.t - i.t) <= 300000)) continue;
-      if (i.t < s.start) { s.startOrig ??= s.start; s.start = i.t; }
+      if (i.t < s.start) { if (s.startOrig == null) s.startOrig = s.start; s.start = i.t; }
       s.deliveries.push({ id: uid(), t: i.t, block: i.block, apt: i.n.apt, floor: i.n.floor, review: false, source: 'manual', del: false, v: i.v, late: true, regAt: now() });
       added++;
     }
@@ -1858,7 +1862,7 @@ function biApply(rows, R, skip = {}) {
     && (skip.band || !BI.band || floorBand(r.floor) === BI.band)
     && (skip.day || !BI.day || r.date === BI.day)
     && (skip.hour || BI.hour == null || hourOf(r.t) === BI.hour)
-    && (skip.dow || BI.dow == null || dowOfYmd(r.date) === BI.dow)
+    && (skip.dow || BI.dow == null || dowOf(r.t) === BI.dow)
     && (!BI.noValue || r.v == null));
 }
 
@@ -1893,7 +1897,7 @@ function biKpis(rows, R) {
 function biDaily(all, R) {
   const rows = biApply(all, R, { day: true });
   const map = {};
-  for (const r of rows) { const o = (map[r.date] ||= { n: 0, v: 0 }); o.n++; o.v += r.v || 0; }
+  for (const r of rows) { if (!map[r.date]) map[r.date] = { n: 0, v: 0 }; const o = map[r.date]; o.n++; o.v += r.v || 0; }
   const days = [];
   const total = Math.min(R.days, 120);                // limite de colunas legíveis
   for (let i = total - 1; i >= 0; i--) { const d = addDays(R.to, -i); days.push({ date: d, n: map[d]?.n || 0, v: map[d]?.v || 0 }); }
@@ -1907,7 +1911,7 @@ function biHeat(all, R) {
   const grid = {};
   let mx = 0, hmin = 24, hmax = -1;
   for (const r of rows) {
-    const h = hourOf(r.t), d = dowOfYmd(r.date), k = d * 24 + h;
+    const h = hourOf(r.t), d = dowOf(r.t), k = d * 24 + h;
     grid[k] = (grid[k] || 0) + 1; mx = Math.max(mx, grid[k]); hmin = Math.min(hmin, h); hmax = Math.max(hmax, h);
   }
   if (!rows.length) return '<div class="empty">Sem dados.</div>';
@@ -1926,7 +1930,7 @@ function biHeat(all, R) {
 function biBarsH(rows, key, allKeys) {
   const m = {};
   for (const k of allKeys || []) m[k] = { n: 0, v: 0 };
-  for (const r of rows) { const k = key(r); if (k == null) continue; const o = (m[k] ||= { n: 0, v: 0 }); o.n++; o.v += r.v || 0; }
+  for (const r of rows) { const k = key(r); if (k == null) continue; const o = getOr(m, k, () => ({ n: 0, v: 0 })); o.n++; o.v += r.v || 0; }
   return m;
 }
 
