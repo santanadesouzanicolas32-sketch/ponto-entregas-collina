@@ -113,7 +113,9 @@ def limpar_turnos(brutos: Any, entregador: str) -> tuple[list[dict], int, int]:
                 entregas.append({"id": str(d.get("id") or f"{s.get('id')}-{d['t']}")[:64], "t": d["t"], "bloco": d["bloco"], "apto": apto, "andar": andar, "valor": valor,
                                  "origem": "photo" if d.get("origem") in ("photo", "foto") else "manual", "conferir": bool(d.get("conferir")), "original": original,
                                  "editadaEm": d.get("editadaEm") if _num(d.get("editadaEm")) else None, "excluida": bool(d.get("excluida")),
-                                 "excluidaEm": d.get("excluidaEm") if _num(d.get("excluidaEm")) else None})
+                                 "excluidaEm": d.get("excluidaEm") if _num(d.get("excluidaEm")) else None,
+                                 "tardia": bool(d.get("tardia")) and _num(d.get("registradaEm")),
+                                 "registradaEm": d.get("registradaEm") if d.get("tardia") and _num(d.get("registradaEm")) else None})
             except (ValueError, KeyError):
                 descartadas += 1
         saida.append({"id": str(s.get("id") or f"{entregador}-{s['data']}-{s['entrada']}")[:64], "data": s["data"], "preset": 16 if s.get("preset") == 16 else 15,
@@ -259,7 +261,10 @@ def gerar_exemplo(entregador: str, fim: date, dias: int, semente: int = 7) -> di
             valor = int((20 + rnd.random() * rnd.random() * 170) * 100) if rnd.random() < p_valor else None
             bloco = rnd.choice(BLOCOS)
             e = {"id": f"{entregador}-{dia}-{k}", "t": t, "bloco": bloco, "apto": apto, "andar": andar, "valor": valor, "origem": "photo" if rnd.random() < p_foto else "manual",
-                 "conferir": False, "original": None, "editadaEm": None, "excluida": False, "excluidaEm": None}
+                 "conferir": False, "original": None, "editadaEm": None, "excluida": False, "excluidaEm": None,
+                 "tardia": False, "registradaEm": None}
+            if rnd.random() < 0.04:                       # entrega esquecida, lançada depois
+                e["tardia"], e["registradaEm"] = True, t + int(rnd.uniform(5, 50) * 60000)
             if rnd.random() < 0.03:
                 e["original"] = {"bloco": bloco, "apto": f"{max(1, andar)}{(int(apto[-1]) % 4) + 1}" if andar else apto, "valor": valor}
                 e["editadaEm"] = t + int(rnd.uniform(1, 30) * 60000)

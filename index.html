@@ -401,7 +401,7 @@ textarea:focus{outline:2px solid var(--gold)}
     <button class="btn gold photo" data-act="photo" id="btnFoto">
       <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
       Foto da comanda</button>
-    <button class="manual" data-act="manual">+ Manual</button>
+    <button class="manual" data-act="manual">+ Manual<small style="display:block;font-size:10px;font-weight:600;opacity:.75;margin-top:2px">esqueci uma</small></button>
   </div></div>
   <nav id="nav" aria-label="Principal"></nav>
 </div>
@@ -631,11 +631,13 @@ function sanitizeDb(d) {
         if (x.rid) dd.rid = str(x.rid, 64);
         if (isNum(x.edAt)) dd.edAt = x.edAt;
         if (isNum(x.delAt)) dd.delAt = x.delAt;
+        if (x.late && isNum(x.regAt)) { dd.late = true; dd.regAt = x.regAt; }
         if (x.orig && typeof x.orig === 'object') {
           try { const ob = normalizeBlock(x.orig.block), oa = normalizeApt(x.orig.apt); dd.orig = { block: ob, apt: oa.apt, v: Number.isInteger(x.orig.v) && x.orig.v >= 0 && x.orig.v <= 1000000 ? x.orig.v : null }; } catch { /* original inválido é ignorado */ }
         }
       } catch { /* entrega inválida é descartada */ }
     }
+    sh.deliveries.sort((p, q) => p.t - q.t);
     out.shifts.push(sh);
   }
   // só um turno aberto
@@ -660,6 +662,7 @@ function save() {
   if (!persist) return;
   try { localStorage.setItem(KEY, JSON.stringify(DB)); }
   catch { storageOk = false; }
+  if (typeof syncSoon === 'function') syncSoon();      // conexão automática com o gerente (se estiver configurada)
 }
 
 /* ---------------- consultas ---------------- */
@@ -736,14 +739,29 @@ function endShift() {
   return s;
 }
 
-/** Registra uma entrega. `at` = horário da foto (já carimbado); sem foto vale o instante do toque. O horário nunca é editável depois. */
-function addDelivery(blockRaw, aptRaw, { force = false, at = null, source = 'manual', review = false, requestId = null, value = null } = {}) {
-  const s = requireOpen();
-  if (s.breaks.some((b) => b.e == null)) throw new AppErr('SHIFT_ON_BREAK', 'Você está em pausa. Retome para registrar entregas.');
+/** Turno que recebe uma entrega lançada depois: o aberto; se já saiu, o último, até 6 h depois da saída. */
+function requireLateShift() {
+  const open = currentOpen();
+  if (open) return open;
+  const last = [...DB.shifts].sort((a, b) => b.start - a.start)[0];
+  if (last && last.end != null && now() - last.end <= 6 * 3600000) return last;
+  throw new AppErr('NO_OPEN_SHIFT', 'Você não tem turno aberto. Bata a entrada primeiro.');
+}
+/** Registra uma entrega. `at` = horário da foto (já carimbado); sem foto vale o instante do toque. O horário nunca é editável depois.
+ *  `late` = entrega esquecida, lançada depois com o horário em que aconteceu: fica marcada como "lançada depois" e guarda quando foi registrada. */
+function addDelivery(blockRaw, aptRaw, { force = false, at = null, source = 'manual', review = false, requestId = null, value = null, late = false } = {}) {
+  const s = late ? requireLateShift() : requireOpen();
+  if (!late && s.breaks.some((b) => b.e == null)) throw new AppErr('SHIFT_ON_BREAK', 'Você está em pausa. Retome para registrar entregas.');
   const block = normalizeBlock(blockRaw), a = normalizeApt(aptRaw);
   const t = at ?? now();
-  if (t < s.start) throw new AppErr('CAPTURE_BEFORE_SHIFT', 'A foto foi tirada antes da entrada do turno.');
+  if (late && at == null) throw new AppErr('INVALID_TIME', 'Informe o horário da entrega.');
+  if (t < s.start) throw new AppErr('CAPTURE_BEFORE_SHIFT', late ? `Esse horário é antes da sua entrada (${fmtTime(s.start)}).` : 'A foto foi tirada antes da entrada do turno.');
   if (t > now() + 5000) throw new AppErr('FUTURE_TIME', 'Horário no futuro.');
+  if (late) {
+    if (s.end != null && t > s.end) throw new AppErr('AFTER_SHIFT', `Esse horário é depois da sua saída (${fmtTime(s.end)}).`);
+    const br = s.breaks.find((b) => t >= b.s && t < (b.e ?? now()));
+    if (br) throw new AppErr('IN_BREAK', `Nesse horário você estava em pausa (${fmtTime(br.s)}–${br.e ? fmtTime(br.e) : 'agora'}).`);
+  }
   if (requestId) {                           // duplo clique / reenvio: devolve a mesma entrega
     const prev = s.deliveries.find((d) => d.rid === requestId);
     if (prev) return { delivery: prev, created: false };
@@ -755,7 +773,9 @@ function addDelivery(blockRaw, aptRaw, { force = false, at = null, source = 'man
   if (value != null && (!Number.isInteger(value) || value < 0 || value > 1000000)) throw new AppErr('INVALID_VALUE', 'Valor inválido.');
   const d = { id: uid(), t, block, apt: a.apt, floor: a.floor, review: !!review, source, del: false, v: value };
   if (requestId) d.rid = requestId;
+  if (late) { d.late = true; d.regAt = now(); }
   s.deliveries.push(d);
+  s.deliveries.sort((p, q) => p.t - q.t);     // volta para a ordem do horário
   save();
   return { delivery: d, created: true };
 }
@@ -788,7 +808,7 @@ function deleteDelivery(id) {
 function undoDelivery(id) {
   for (const s of DB.shifts) {
     const i = s.deliveries.findIndex((x) => x.id === id);
-    if (i >= 0) { if (now() - s.deliveries[i].t > 120000) throw new AppErr('TOO_LATE', 'Já passou do tempo de desfazer. Exclua pela lista.'); s.deliveries.splice(i, 1); save(); return; }
+    if (i >= 0) { if (now() - (s.deliveries[i].regAt ?? s.deliveries[i].t) > 120000) throw new AppErr('TOO_LATE', 'Já passou do tempo de desfazer. Exclua pela lista.'); s.deliveries.splice(i, 1); save(); return; }
   }
   throw new AppErr('NOT_FOUND', 'Entrega não encontrada.');
 }
@@ -899,14 +919,16 @@ function exportShifts(db) {
     entregas: s.deliveries.map((d) => ({
       id: d.id, t: d.t, bloco: d.block, apto: d.apt, andar: d.floor, valor: d.v ?? null, origem: d.source, conferir: !!d.review,
       original: d.orig ? { bloco: d.orig.block, apto: d.orig.apt, valor: d.orig.v ?? null } : null, editadaEm: d.edAt ?? null,
-      excluida: !!d.del, excluidaEm: d.delAt ?? null,
+      excluida: !!d.del, excluidaEm: d.delAt ?? null, tardia: !!d.late, registradaEm: d.late ? (d.regAt ?? null) : null,
     })),
   }));
 }
-async function buildExport(db, exportedAt = now()) {
+/** `extra` = turnos que já estão com o gerente e não existem mais aqui (somados, nunca perdidos). Em turno com o mesmo id vale o que está neste aparelho. */
+async function buildExport(db, exportedAt = now(), extra = []) {
   const r = riderById(db.user?.id);
   if (!r) throw new AppErr('NO_RIDER', 'Escolha quem você é (Pedro, Bruno, João, Kauã ou Nicolas) em Ajustes.');
-  const turnos = exportShifts(db);
+  const local = exportShifts(db), ids = new Set(local.map((s) => s.id));
+  const turnos = [...local, ...extra.filter((s) => s && typeof s.id === 'string' && Number.isFinite(s.entrada) && !ids.has(s.id))].sort((a, b) => a.entrada - b.entrada);
   const integridade = 'sha256:' + await sha256hex(canonical({ entregador: r.id, turnos }));
   return { formato: EXPORT_FORMAT, versao: 2, entregador: { id: r.id, nome: r.nome }, exportadoEm: exportedAt, turnos, integridade };
 }
@@ -993,6 +1015,146 @@ function parseComanda(rawText) {
   return { block, apt, floor, readable, confidence, needsReview: confidence !== 'alta', value: val.value, valueSure: val.sure };
 }
 
+/* ============================================================
+   Conexão automática entre o aplicativo dos entregadores e a gerência.
+   Os dados vão para um repositório PRIVADO do GitHub (um arquivo por entregador: entregas/<id>.json),
+   usando uma chave de acesso (token) limitada a esse repositório. Cada envio é um commit: fica o histórico.
+   Sem conexão configurada, nada disto roda e continua valendo o envio por arquivo.
+   ============================================================ */
+const SYNC_CFG_KEY = 'ponto-collina:sync';
+const SYNC_DEFAULT_REPO = 'santanadesouzanicolas32-sketch/ponto-dados';
+const SYNC = { cfg: undefined, fetch: null, off: false, timer: null, running: false, again: false, listeners: [], state: { busy: false, ok: false, at: null, err: null } };
+class SyncErr extends Error { constructor(msg, status = 0) { super(msg); this.status = status; } }
+
+/* ---------------- configuração (fica só neste aparelho) ---------------- */
+const validRepo = (r) => typeof r === 'string' && /^[\w.-]{1,100}\/[\w.-]{1,100}$/.test(r);
+const validToken = (t) => typeof t === 'string' && /^[\w-]{20,255}$/.test(t);
+function syncConfig() {
+  if (SYNC.cfg !== undefined) return SYNC.cfg;
+  let c = null;
+  try { const o = JSON.parse(localStorage.getItem(SYNC_CFG_KEY) || 'null'); if (o && validRepo(o.repo) && validToken(o.token)) c = { repo: o.repo, token: o.token }; } catch { /* sem configuração */ }
+  return (SYNC.cfg = c);
+}
+function setSyncConfig(c) {
+  SYNC.cfg = c && validRepo(c.repo) && validToken(c.token) ? { repo: c.repo, token: c.token } : null;
+  try { if (SYNC.cfg) localStorage.setItem(SYNC_CFG_KEY, JSON.stringify(SYNC.cfg)); else localStorage.removeItem(SYNC_CFG_KEY); } catch { /* ignore */ }
+  return SYNC.cfg;
+}
+const b64url = (s) => btoa(String.fromCharCode(...new TextEncoder().encode(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const unb64url = (s) => new TextDecoder().decode(Uint8Array.from(atob(String(s).replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0)));
+/** Link que o gerente manda aos entregadores: leva a conexão no trecho depois do # (não vai para nenhum servidor). */
+function syncLink(base, cfg = syncConfig()) { return cfg ? `${base}#sync=${b64url(JSON.stringify({ r: cfg.repo, t: cfg.token }))}` : null; }
+function parseSyncHash(hash = location.hash) {
+  const m = /^#sync=([\w-]+)$/.exec(hash || '');
+  if (!m) return null;
+  try { const o = JSON.parse(unb64url(m[1])); return validRepo(o.r) && validToken(o.t) ? { repo: o.r, token: o.t } : null; } catch { return null; }
+}
+/** Aplicativo do entregador: se abriu pelo link do gerente, guarda a conexão e limpa o endereço. */
+function adoptSyncHash() {
+  const c = parseSyncHash();
+  if (!c) return false;
+  setSyncConfig(c);
+  try { history.replaceState(null, '', location.pathname + location.search); } catch { /* ignore */ }
+  return true;
+}
+
+/* ---------------- GitHub (contents API) ---------------- */
+async function ghReq(cfg, path, { method = 'GET', accept = 'application/vnd.github+json', headers = {}, body } = {}) {
+  try {
+    return await (SYNC.fetch || fetch)(`https://api.github.com${path}`, {
+      method, cache: 'no-store', body,
+      headers: { Authorization: `Bearer ${cfg.token}`, Accept: accept, 'X-GitHub-Api-Version': '2022-11-28', ...(body ? { 'Content-Type': 'application/json' } : {}), ...headers },
+    });
+  } catch { throw new SyncErr('Sem internet agora.', 0); }
+}
+function ghFail(r) {
+  if (r.status === 401) return new SyncErr('A chave de acesso (token) é inválida ou venceu. Gere outra e conecte de novo.', 401);
+  if (r.status === 403) return new SyncErr(r.headers.get('x-ratelimit-remaining') === '0' ? 'O GitHub pediu uma pausa. Tente de novo em alguns minutos.' : 'A chave de acesso não tem permissão neste repositório (precisa de Contents: leitura e escrita).', 403);
+  if (r.status === 404) return new SyncErr('Repositório não encontrado para esta chave de acesso.', 404);
+  if (r.status === 409 || r.status === 422) return new SyncErr('Conflito de versão.', 409);
+  return new SyncErr(`O GitHub respondeu com erro ${r.status}.`, r.status);
+}
+/** Confere repositório e permissão de escrita. Devolve o nome completo do repositório. */
+async function ghCheck(cfg) {
+  const r = await ghReq(cfg, `/repos/${cfg.repo}`);
+  if (!r.ok) throw ghFail(r);
+  const j = await r.json();
+  if (j.permissions && j.permissions.push === false) throw new SyncErr('Esta chave de acesso só consegue ler. Ela precisa de Contents: leitura e escrita.', 403);
+  return { name: j.full_name || cfg.repo, private: j.private !== false };
+}
+/** Lê um arquivo do repositório. 304 = igual ao que você já tinha (etag). */
+async function ghGetFile(cfg, file, etag = null) {
+  const r = await ghReq(cfg, `/repos/${cfg.repo}/contents/${file}`, { accept: 'application/vnd.github.raw+json', headers: etag ? { 'If-None-Match': etag } : {} });
+  if (r.status === 304) return { status: 304 };
+  if (r.status === 404) return { status: 404 };
+  if (!r.ok) throw ghFail(r);
+  const tag = r.headers.get('etag') || '';
+  return { status: 200, text: await r.text(), etag: tag, sha: tag.replace(/^W\//, '').replace(/"/g, '') };
+}
+function utf8ToB64(text) {
+  const bytes = new TextEncoder().encode(text);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+async function ghPutFile(cfg, file, text, sha, message) {
+  const r = await ghReq(cfg, `/repos/${cfg.repo}/contents/${file}`, { method: 'PUT', body: JSON.stringify({ message, content: utf8ToB64(text), ...(sha ? { sha } : {}) }) });
+  if (!r.ok) throw ghFail(r);
+  const j = await r.json();
+  return j.content?.sha || null;
+}
+
+/* ---------------- estado e avisos para a tela ---------------- */
+function syncSet(patch) { Object.assign(SYNC.state, patch); for (const f of SYNC.listeners) { try { f(SYNC.state); } catch { /* tela fora */ } } }
+const syncText = () => {
+  const s = SYNC.state;
+  if (!syncConfig()) return 'Sem conexão automática';
+  if (s.busy) return 'Enviando…';
+  if (s.err) return s.err;
+  return s.at ? `Enviado às ${fmtTime(s.at)}` : 'Conectado';
+};
+
+/* ---------------- entregador: envia o próprio fechamento ---------------- */
+const exportIntegrity = (text) => { try { return JSON.parse(text).integridade || null; } catch { return null; } };
+/** Envia tudo o que há neste aparelho, somado ao que já está na nuvem (nunca apaga o que o gerente já recebeu). */
+async function syncPush() {
+  const cfg = syncConfig();
+  if (!cfg || SYNC.off || !riderById(DB.user?.id)) return false;
+  if (SYNC.running) { SYNC.again = true; return false; }
+  SYNC.running = true; syncSet({ busy: true });
+  const file = `entregas/${DB.user.id}.json`;
+  let done = false;
+  try {
+    for (let attempt = 0; attempt < 3 && !done; attempt++) {
+      const remote = await ghGetFile(cfg, file);
+      let extra = [];
+      if (remote.status === 200) { try { const o = JSON.parse(remote.text); if (o?.entregador?.id === DB.user.id && Array.isArray(o.turnos)) extra = o.turnos; } catch { /* arquivo ilegível: será refeito */ } }
+      const exp = await buildExport(DB, now(), extra);
+      if (!exp.turnos.length) { syncSet({ busy: false, ok: true, err: null }); return true; }       // nada para enviar ainda
+      const unchanged = remote.status === 200 && exportIntegrity(remote.text) === exp.integridade;
+      if (!unchanged || exp.turnos.some((s) => s.saida == null)) {                                  // turno aberto: renova a hora do envio
+        try { await ghPutFile(cfg, file, JSON.stringify(exp), remote.status === 200 ? remote.sha : null, `${exp.entregador.nome} · ${fmtDateTime(now())}`); }
+        catch (e) { if (e.status === 409 && attempt < 2) continue; throw e; }
+      }
+      done = true;
+    }
+    syncSet({ busy: false, ok: true, at: now(), err: null });
+    return true;
+  } catch (e) {
+    syncSet({ busy: false, ok: false, err: e instanceof SyncErr ? e.message : 'Não consegui enviar agora.' });
+    return false;
+  } finally {
+    SYNC.running = false;
+    if (SYNC.again) { SYNC.again = false; syncSoon(1000); }
+  }
+}
+/** Agenda o envio logo depois da última alteração (junta várias alterações seguidas em um só envio). */
+function syncSoon(ms = 4000) {
+  if (SYNC.off || !syncConfig()) return;
+  clearTimeout(SYNC.timer);
+  SYNC.timer = setTimeout(() => { syncPush(); }, ms);
+}
+
 /* Componentes de interface compartilhados: folhas (modais), avisos, ações por delegação de eventos. */
 /* ---------------- folhas, avisos, ações ---------------- */
 function sheet(html) {
@@ -1068,6 +1230,12 @@ function buildNav() {
     + TABS.map(([k, label]) => `<button data-act="goto" data-tab="${k}" data-name="${label}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[k]}</svg><span>${label}</span></button>`).join('');
   document.querySelectorAll('img[data-logo]').forEach((i) => { i.src = LOGO; });
 }
+/** Marca discreta ao lado da data: os registros estão chegando ao gerente? */
+function syncMark() {
+  if (!syncConfig() || SYNC.off) return '';
+  const s = SYNC.state;
+  return s.busy ? ' · enviando…' : s.err ? ' · ⚠ sem envio' : s.at ? ' · ✓ enviado' : '';
+}
 actions.goto = (el) => { UI.tab = el.dataset.tab; render(); window.scrollTo(0, 0); };
 
 function render({ quiet = false } = {}) {
@@ -1076,7 +1244,7 @@ function render({ quiet = false } = {}) {
     b.classList.toggle('on', on);
     if (on) $('pageTitle').textContent = b.dataset.name;
   });
-  $('topDate').textContent = F_SHORT.format(new Date(now())).replace(/\./g, '');
+  $('topDate').textContent = F_SHORT.format(new Date(now())).replace(/\./g, '') + syncMark();
   $('userBtn').textContent = (DB.user?.name || '?')[0].toUpperCase();
   $('storageWarn').classList.toggle('hide', storageOk);
   const view = $('view');
@@ -1092,7 +1260,7 @@ function render({ quiet = false } = {}) {
 actions.reload = () => location.reload();
 
 /* ---------------- TURNO ---------------- */
-const deliveryRow = (d) => `<button class="item" data-act="edit-delivery" data-id="${esc(d.id)}"><span class="dest">${esc(d.block)} ${esc(d.apt)}</span><span class="t">${fmtTime(d.t)}</span>${d.review ? '<span class="badge">CONFERIR</span>' : ''}${d.source === 'photo' ? '<span class="tag photo">FOTO</span>' : ''}${d.v != null ? `<span class="gold amt">${brl(d.v)}</span>` : ''}</button>`;
+const deliveryRow = (d) => `<button class="item" data-act="edit-delivery" data-id="${esc(d.id)}"><span class="dest">${esc(d.block)} ${esc(d.apt)}</span><span class="t">${fmtTime(d.t)}</span>${d.review ? '<span class="badge">CONFERIR</span>' : ''}${d.source === 'photo' ? '<span class="tag photo">FOTO</span>' : ''}${d.late ? '<span class="tag">DEPOIS</span>' : ''}${d.v != null ? `<span class="gold amt">${brl(d.v)}</span>` : ''}</button>`;
 const alertsHtml = (al) => (al.length ? `<div class="alerts">${al.map((a) => `<div class="alert ${esc(a.severity)}" role="status"><i></i><span>${esc(a.message)}</span></div>`).join('')}</div>` : '');
 
 function hourBars(dl, s) {
@@ -1206,10 +1374,24 @@ actions.photo = () => $('file').click();
 
 /* ---------------- registro de entrega ---------------- */
 const centsToInput = (c) => (c == null ? '' : (c / 100).toFixed(2).replace('.', ','));
-function deliverySheet({ title, block = null, apt = '', at = null, source = 'manual', review = false, note = '', edit = null, value = null }) {
+/** "HH:MM" -> instante mais recente com essa hora que já passou (hoje ou, se passar da meia-noite, ontem). */
+function timeToMs(hhmm) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || '').trim());
+  if (!m) return null;
+  const t = now(), h = +m[1], mi = +m[2];
+  let ms = localToMs(ymdOf(t), h, mi);
+  if (ms > t + 60000) ms = localToMs(addDays(ymdOf(t), -1), h, mi);
+  return Math.min(ms, t);
+}
+function deliverySheet({ title, block = null, apt = '', at = null, source = 'manual', review = false, note = '', edit = null, value = null, lateAt = null }) {
   const requestId = uid();                     // repetir o toque com o mesmo id não duplica
   let chosen = edit ? edit.block : block;
+  const canLate = !edit && !at && source === 'manual';
   sheet(`<h3>${esc(edit ? 'Corrigir entrega' : title)}</h3>
+    ${canLate ? `<div class="chips" id="whenSeg" style="margin-bottom:6px"><button type="button" class="chip ${lateAt ? '' : 'on'}" data-w="now">Agora</button><button type="button" class="chip ${lateAt ? 'on' : ''}" data-w="late">Esqueci de registrar</button></div>
+    <div id="whenBox" class="${lateAt ? '' : 'hide'}"><label for="atTime">Horário em que entregou</label>
+    <input id="atTime" type="time" value="${lateAt ? esc(fmtTime(lateAt)) : ''}">
+    <p class="mut lockp" style="margin:6px 0 0">Entra na ordem do horário e fica marcada como “lançada depois”. Depois de salvar, o horário não muda.</p></div>` : ''}
     ${note ? `<div class="ocr-note ${note.startsWith('!') ? 'warn' : ''}">${esc(note.replace(/^!/, ''))}</div>` : ''}
     <label>Bloco</label>
     <div class="chips" id="chips">${CFG.blocks.map((b) => `<button type="button" class="chip ${chosen === b ? 'on' : ''}" data-b="${b}">${b}</button>`).join('')}</div>
@@ -1228,7 +1410,17 @@ function deliverySheet({ title, block = null, apt = '', at = null, source = 'man
     document.querySelectorAll('#chips .chip').forEach((x) => x.classList.toggle('on', x === c));
     $('apt').focus();
   });
-  if (!edit && !apt) setTimeout(() => $('apt').focus(), 60);
+  let when = lateAt ? 'late' : 'now';
+  if (canLate) {
+    $('whenSeg').addEventListener('click', (e) => {
+      const c = e.target.closest('.chip'); if (!c) return;
+      when = c.dataset.w;
+      document.querySelectorAll('#whenSeg .chip').forEach((x) => x.classList.toggle('on', x === c));
+      $('whenBox').classList.toggle('hide', when !== 'late');
+      if (when === 'late') $('atTime').focus();
+    });
+  }
+  if (!edit && !apt && !lateAt) setTimeout(() => $('apt').focus(), 60);
   $('apt').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('dOk').click(); });
   $('dOk').onclick = () => busy($('dOk'), async () => {
     err('');
@@ -1242,14 +1434,19 @@ function deliverySheet({ title, block = null, apt = '', at = null, source = 'man
         // "para conferir" só se o funcionário aceitou a leitura automática sem alterar
         const accepted = source === 'photo' && review && chosen === block && normalizeApt(apartment).apt === apt;
         const o = { at, source, review: accepted, requestId, value: cents };
+        if (canLate && when === 'late') {
+          const lt = timeToMs($('atTime').value);
+          if (lt == null) return err('Informe o horário em que a entrega foi feita.');
+          o.at = lt; o.late = true;
+        }
         try { addDelivery(chosen, apartment, o); }
         catch (e) {
           if (e.code !== 'DUPLICATE_RECENT') throw e;
-          const again = await confirmSheet({ title: 'Mesma entrega há instantes', text: e.message, ok: 'Registrar de novo' });
-          if (!again) return deliverySheet({ title, block: chosen, apt: apartment, at, source, review, note, value: cents });
+          const again = await confirmSheet({ title: o.late ? 'Já existe uma entrega igual nesse horário' : 'Mesma entrega há instantes', text: e.message, ok: 'Registrar de novo' });
+          if (!again) return deliverySheet({ title, block: chosen, apt: apartment, at, source, review, note, value: cents, lateAt: o.late ? o.at : null });
           addDelivery(chosen, apartment, { ...o, force: true, requestId: uid() });
         }
-        toast(`✓ ${chosen} ${normalizeApt(apartment).apt}`);
+        toast(o.late ? `✓ ${chosen} ${normalizeApt(apartment).apt} às ${fmtTime(o.at)} (lançada depois)` : `✓ ${chosen} ${normalizeApt(apartment).apt}`);
         try { navigator.vibrate?.(40); } catch { /* ignore */ }
       }
       closeSheet(); render();
@@ -1415,7 +1612,7 @@ function histEntregas() {
     if (UI.f.to) l = l.filter((d) => d.date <= UI.f.to);
     const shown = l.slice(0, UI.histPage * 50), flagged = l.filter((d) => d.review).length;
     $('entList').innerHTML = `<h2>${l.length} entregas${flagged ? ` · ${flagged} para conferir` : ''}</h2>` + (shown.length
-      ? shown.map((d) => `<button class="item" data-act="edit-delivery" data-id="${esc(d.id)}"><span class="dest">${esc(d.block)} ${esc(d.apt)}</span><span class="t">${fmtDateTime(d.t)}</span>${d.review ? '<span class="badge">CONFERIR</span>' : ''}${d.source === 'photo' ? '<span class="tag photo">FOTO</span>' : ''}${d.v != null ? `<span class="gold amt">${brl(d.v)}</span>` : ''}</button>`).join('') + (shown.length < l.length ? '<button class="btn sm loadmore" data-act="more-del">Carregar mais</button>' : '')
+      ? shown.map((d) => `<button class="item" data-act="edit-delivery" data-id="${esc(d.id)}"><span class="dest">${esc(d.block)} ${esc(d.apt)}</span><span class="t">${fmtDateTime(d.t)}</span>${d.review ? '<span class="badge">CONFERIR</span>' : ''}${d.source === 'photo' ? '<span class="tag photo">FOTO</span>' : ''}${d.late ? '<span class="tag">DEPOIS</span>' : ''}${d.v != null ? `<span class="gold amt">${brl(d.v)}</span>` : ''}</button>`).join('') + (shown.length < l.length ? '<button class="btn sm loadmore" data-act="more-del">Carregar mais</button>' : '')
       : '<div class="empty">Nenhuma entrega encontrada.</div>');
   };
   let tm;
@@ -1482,8 +1679,14 @@ actions.settings = () => {
     <p id="sErr" class="lerr" style="text-align:left"></p>
     <button class="btn gold" id="sSave">Salvar</button>
     <h2 style="margin:22px 0 8px">Gerente</h2>
+    ${syncConfig()
+      ? `<div class="issue"><i id="sDot" style="background:var(--ok)"></i><span id="sStat"></span></div>
+    <button class="btn gold" id="sSync" style="margin-top:8px">Enviar agora</button>
+    <p class="mut" style="font-size:12px;margin:8px 0 12px">Seus registros vão sozinhos para o gerente a cada alteração. Se estiver sem internet, seguem quando voltar.</p>
+    <button class="btn sm" id="sSend" style="width:100%">Enviar por arquivo (alternativa)</button>`
+      : `<p class="mut" style="font-size:13px;margin:0 0 10px">Sem conexão automática. Peça ao gerente o link de conexão e abra-o neste aparelho; depois disso tudo vai sozinho.</p>
     <button class="btn" id="sSend">Enviar fechamento ao gerente</button>
-    <p class="mut" style="font-size:12px;margin:8px 0 0">Gera um arquivo com os seus turnos e entregas (horários, pedidos e valores) para o gerente acompanhar. No celular, abre direto o compartilhamento (WhatsApp).</p>
+    <p class="mut" style="font-size:12px;margin:8px 0 0">Gera um arquivo com os seus turnos e entregas (horários, pedidos e valores) para o gerente acompanhar. No celular, abre direto o compartilhamento (WhatsApp).</p>`}
     <h2 style="margin:22px 0 8px">Dados</h2>
     <div class="grid2"><button class="btn sm" id="sExport">Salvar backup</button><button class="btn sm" id="sImport">Restaurar backup</button></div>
     <button class="btn sm red" id="sWipe" style="width:100%;margin-top:8px">Apagar tudo</button>
@@ -1497,6 +1700,11 @@ actions.settings = () => {
     DB.user = { name: rider.nome, id: rider.id, goal }; DB.prefs.autoPhoto = $('sAuto').checked; save(); closeSheet(); toast('Salvo'); render();
   };
   $('sSend').onclick = () => busy($('sSend'), sendToManager);
+  if ($('sSync')) {
+    const paint = () => { if (!$('sStat')) return; $('sStat').textContent = syncText(); $('sDot').style.background = SYNC.state.err ? 'var(--bad)' : 'var(--ok)'; };
+    paint(); SYNC.listeners.push(paint);
+    $('sSync').onclick = () => busy($('sSync'), async () => { const ok = await syncPush(); paint(); toast(ok ? 'Enviado ao gerente' : SYNC.state.err || 'Não foi possível enviar', ok ? 2500 : 4500); });
+  }
   $('sExport').onclick = () => { download(`backup-ponto-${ymdOf(now())}.json`, JSON.stringify(DB), 'application/json'); toast('Backup salvo'); };
   $('sImport').onclick = () => $('importFile').click();
   $('sWipe').onclick = () => {
@@ -1547,12 +1755,19 @@ function boot() {
   $('suname').innerHTML = riderOptions('');
   load();
   startTimers();
-  if (new URLSearchParams(location.search).has('selftest')) { runSelfTestsView(); return; }
+  if (new URLSearchParams(location.search).has('selftest')) { SYNC.off = true; runSelfTestsView(); return; }
+  const linked = adoptSyncHash();                           // abriu pelo link do gerente
+  SYNC.listeners.push(() => { if (DB.user && !sheetOpen()) $('topDate').textContent = F_SHORT.format(new Date(now())).replace(/\./g, '') + syncMark(); });
+  addEventListener('online', () => syncSoon(1000));
+  document.addEventListener('visibilitychange', () => { if (document.hidden) syncPush(); else syncSoon(1500); });
+  setInterval(() => { if (!document.hidden && openShift()) syncSoon(500); }, 5 * 60000);    // turno aberto: renova a hora do envio
   if (DB.user) {
     const n = applyPreload();
     enterApp();
     if (!DB.user.id) askIdentity();
     else if (n) toast(`${n} entrega(s) lançada(s) no seu histórico`, 5000);
+    if (linked) toast('Conectado ao gerente: seus registros vão sozinhos', 5000);
+    syncSoon(1500);
   } else showOnly('setup');
   $('boot').classList.add('hide');
 }
@@ -2125,6 +2340,61 @@ function runSelfTests() {
     });
     T('comanda: números longos (telefone, CEP, pedido) não viram apartamento', () => {
       const r = parseComanda('Pedido 123456 CEP 78000-000 Tel 65999991234 BLOCO B1'); eq([r.block, r.apt], ['B1', null]);
+    });
+
+    /* ---- entrega esquecida, lançada depois ---- */
+    T('esquecida: entra na ordem do horário, fica marcada e guarda quando foi registrada', () => {
+      startShift(15);
+      clock(at(2026, 10, 6, 16, 0)); addDelivery('A1', '121');
+      clock(at(2026, 10, 6, 17, 0)); addDelivery('B2', '241');
+      clock(at(2026, 10, 6, 18, 0)); const r = addDelivery('C1', '51', { at: at(2026, 10, 6, 16, 30), late: true, value: 2500 });
+      eq(openShift().deliveries.map((d) => d.apt), ['121', '51', '241']);
+      eq([r.delivery.late, r.delivery.regAt, r.delivery.t], [true, at(2026, 10, 6, 18, 0), at(2026, 10, 6, 16, 30)]);
+      ok(!openShift().deliveries[0].late && !openShift().deliveries[2].late, 'só a esquecida é marcada');
+    });
+    T('esquecida: horário antes da entrada, no futuro, em pausa ou sem horário é recusado', () => {
+      startShift(15);
+      clock(at(2026, 10, 6, 16, 0)); startBreak(); clock(at(2026, 10, 6, 16, 20)); endBreak(); clock(at(2026, 10, 6, 18, 0));
+      throwsCode(() => addDelivery('A1', '121', { at: at(2026, 10, 6, 14, 0), late: true }), 'CAPTURE_BEFORE_SHIFT');
+      throwsCode(() => addDelivery('A1', '121', { at: at(2026, 10, 6, 19, 0), late: true }), 'FUTURE_TIME');
+      throwsCode(() => addDelivery('A1', '121', { at: at(2026, 10, 6, 16, 10), late: true }), 'IN_BREAK');
+      throwsCode(() => addDelivery('A1', '121', { late: true }), 'INVALID_TIME');
+      addDelivery('A1', '121', { at: at(2026, 10, 6, 16, 30), late: true });
+      eq(openShift().deliveries.length, 1);
+    });
+    T('esquecida: pode ser lançada com pausa em andamento e, depois da saída, só até 6 h e dentro do turno', () => {
+      startShift(15); clock(at(2026, 10, 6, 17, 0)); startBreak();
+      addDelivery('A1', '121', { at: at(2026, 10, 6, 16, 0), late: true });          // em pausa agora, mas a entrega foi antes
+      clock(at(2026, 10, 6, 17, 30)); endBreak(); clock(at(2026, 10, 6, 20, 0)); endShift();
+      clock(at(2026, 10, 6, 21, 0));
+      addDelivery('B1', '131', { at: at(2026, 10, 6, 19, 0), late: true });          // turno já fechado: vai para ele
+      throwsCode(() => addDelivery('B1', '141', { at: at(2026, 10, 6, 20, 30), late: true }), 'AFTER_SHIFT');
+      eq(DB.shifts[0].deliveries.length, 2);
+      clock(at(2026, 10, 7, 3, 0)); throwsCode(() => addDelivery('B1', '151', { at: at(2026, 10, 6, 19, 30), late: true }), 'NO_OPEN_SHIFT');
+    });
+    T('esquecida: entrega igual no mesmo horário pede confirmação', () => {
+      startShift(15); clock(at(2026, 10, 6, 16, 0)); addDelivery('A1', '121');
+      throwsCode(() => addDelivery('A1', '121', { at: at(2026, 10, 6, 16, 0), late: true }), 'DUPLICATE_RECENT');
+      addDelivery('A1', '121', { at: at(2026, 10, 6, 16, 0), late: true, force: true });
+      eq(openShift().deliveries.length, 2);
+    });
+    T('esquecida: horário digitado (HH:MM) vira o instante mais recente que já passou', () => {
+      clock(at(2026, 10, 7, 0, 10));
+      eq(timeToMs('23:50'), at(2026, 10, 6, 23, 50)); eq(timeToMs('00:05'), at(2026, 10, 7, 0, 5)); eq(timeToMs('0:05'), at(2026, 10, 7, 0, 5));
+      eq(timeToMs('00:10'), at(2026, 10, 7, 0, 10)); eq(timeToMs('00:10') <= now(), true);
+      eq([timeToMs(''), timeToMs('25x'), timeToMs(null)], [null, null, null]);
+    });
+    T('esquecida: sobrevive ao salvar e carregar, e vai no fechamento do gerente', () => {
+      startShift(15); clock(at(2026, 10, 6, 18, 0)); addDelivery('C1', '51', { at: at(2026, 10, 6, 16, 30), late: true });
+      addDelivery('A1', '121');
+      const back = sanitizeDb(JSON.parse(JSON.stringify(DB))); const l = back.shifts[0].deliveries;
+      eq(l.map((d) => [d.apt, !!d.late]), [['51', true], ['121', false]]); eq(l[0].regAt, at(2026, 10, 6, 18, 0));
+      const ex = exportShifts(DB)[0].entregas; eq(ex.map((e) => [e.tardia, e.registradaEm]), [[true, at(2026, 10, 6, 18, 0)], [false, null]]);
+    });
+    T('esquecida: o desfazer conta a partir de quando foi registrada, não da hora da entrega', () => {
+      startShift(15); clock(at(2026, 10, 6, 18, 0));
+      const r = addDelivery('C1', '51', { at: at(2026, 10, 6, 16, 30), late: true });
+      undoDelivery(r.delivery.id); eq(openShift().deliveries.length, 0);
     });
   } finally {
     DB = saved.DB; persist = saved.persist; fixedNow = saved.fixedNow; clockOffset = saved.clockOffset;

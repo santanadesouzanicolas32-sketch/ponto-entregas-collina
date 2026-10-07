@@ -192,3 +192,22 @@ def test_cli_sem_arquivos_validos(tmp_path):
     (tmp_path / "x.json").write_text("[]", encoding="utf-8")
     r = runner.invoke(c.app, ["consolidar", str(tmp_path), "-o", str(tmp_path / "o.json")])
     assert r.exit_code == 2 and not (tmp_path / "o.json").exists()
+
+
+# ---------------------------------------------------------------- entrega esquecida (lançada depois)
+def test_entrega_lancada_depois_e_preservada_e_so_vale_com_a_hora_do_registro():
+    obj = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    e = obj["turnos"][0]["entregas"]
+    e[0]["tardia"], e[0]["registradaEm"] = True, e[0]["t"] + 25 * 60000
+    e[1]["tardia"] = True                                     # sem hora do registro: não vale
+    p = c.ler_pacotes(com_integridade(obj))[0]
+    ent = p.turnos[0]["entregas"]
+    assert (ent[0]["tardia"], ent[0]["registradaEm"]) == (True, e[0]["t"] + 25 * 60000)
+    assert (ent[1]["tardia"], ent[1]["registradaEm"]) == (False, None)
+    assert (ent[2]["tardia"], ent[2]["registradaEm"]) == (False, None)    # arquivo antigo, sem o campo
+
+
+def test_exemplo_tem_entregas_lancadas_depois_com_registro_posterior():
+    p = c.ler_pacotes(exemplo("kaua"))[0]
+    tardias = [d for t in p.turnos for d in t["entregas"] if d["tardia"]]
+    assert tardias and all(d["registradaEm"] > d["t"] for d in tardias)

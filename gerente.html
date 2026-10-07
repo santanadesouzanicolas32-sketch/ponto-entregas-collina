@@ -375,7 +375,8 @@ textarea:focus{outline:2px solid var(--gold)}
   <div class="topbar">
     <img class="logo" data-logo alt="" width="38" height="38">
     <div class="ttl"><b id="pageTitle">Visão geral</b><small id="topSub">Gerência</small></div>
-    <button class="btn gold sm" data-act="m-import" style="margin-left:auto">Importar arquivos</button>
+    <button class="btn sm hide" id="mPull" data-act="m-pull" style="margin-left:auto">Atualizar</button>
+    <button class="btn gold sm" data-act="m-import" id="mImp" style="margin-left:auto">Importar arquivos</button>
   </div>
   <div class="wrap" id="view" aria-live="polite"></div>
   <nav id="nav" aria-label="Principal"></nav>
@@ -605,11 +606,13 @@ function sanitizeDb(d) {
         if (x.rid) dd.rid = str(x.rid, 64);
         if (isNum(x.edAt)) dd.edAt = x.edAt;
         if (isNum(x.delAt)) dd.delAt = x.delAt;
+        if (x.late && isNum(x.regAt)) { dd.late = true; dd.regAt = x.regAt; }
         if (x.orig && typeof x.orig === 'object') {
           try { const ob = normalizeBlock(x.orig.block), oa = normalizeApt(x.orig.apt); dd.orig = { block: ob, apt: oa.apt, v: Number.isInteger(x.orig.v) && x.orig.v >= 0 && x.orig.v <= 1000000 ? x.orig.v : null }; } catch { /* original inválido é ignorado */ }
         }
       } catch { /* entrega inválida é descartada */ }
     }
+    sh.deliveries.sort((p, q) => p.t - q.t);
     out.shifts.push(sh);
   }
   // só um turno aberto
@@ -634,6 +637,7 @@ function save() {
   if (!persist) return;
   try { localStorage.setItem(KEY, JSON.stringify(DB)); }
   catch { storageOk = false; }
+  if (typeof syncSoon === 'function') syncSoon();      // conexão automática com o gerente (se estiver configurada)
 }
 
 /* ---------------- consultas ---------------- */
@@ -710,14 +714,29 @@ function endShift() {
   return s;
 }
 
-/** Registra uma entrega. `at` = horário da foto (já carimbado); sem foto vale o instante do toque. O horário nunca é editável depois. */
-function addDelivery(blockRaw, aptRaw, { force = false, at = null, source = 'manual', review = false, requestId = null, value = null } = {}) {
-  const s = requireOpen();
-  if (s.breaks.some((b) => b.e == null)) throw new AppErr('SHIFT_ON_BREAK', 'Você está em pausa. Retome para registrar entregas.');
+/** Turno que recebe uma entrega lançada depois: o aberto; se já saiu, o último, até 6 h depois da saída. */
+function requireLateShift() {
+  const open = currentOpen();
+  if (open) return open;
+  const last = [...DB.shifts].sort((a, b) => b.start - a.start)[0];
+  if (last && last.end != null && now() - last.end <= 6 * 3600000) return last;
+  throw new AppErr('NO_OPEN_SHIFT', 'Você não tem turno aberto. Bata a entrada primeiro.');
+}
+/** Registra uma entrega. `at` = horário da foto (já carimbado); sem foto vale o instante do toque. O horário nunca é editável depois.
+ *  `late` = entrega esquecida, lançada depois com o horário em que aconteceu: fica marcada como "lançada depois" e guarda quando foi registrada. */
+function addDelivery(blockRaw, aptRaw, { force = false, at = null, source = 'manual', review = false, requestId = null, value = null, late = false } = {}) {
+  const s = late ? requireLateShift() : requireOpen();
+  if (!late && s.breaks.some((b) => b.e == null)) throw new AppErr('SHIFT_ON_BREAK', 'Você está em pausa. Retome para registrar entregas.');
   const block = normalizeBlock(blockRaw), a = normalizeApt(aptRaw);
   const t = at ?? now();
-  if (t < s.start) throw new AppErr('CAPTURE_BEFORE_SHIFT', 'A foto foi tirada antes da entrada do turno.');
+  if (late && at == null) throw new AppErr('INVALID_TIME', 'Informe o horário da entrega.');
+  if (t < s.start) throw new AppErr('CAPTURE_BEFORE_SHIFT', late ? `Esse horário é antes da sua entrada (${fmtTime(s.start)}).` : 'A foto foi tirada antes da entrada do turno.');
   if (t > now() + 5000) throw new AppErr('FUTURE_TIME', 'Horário no futuro.');
+  if (late) {
+    if (s.end != null && t > s.end) throw new AppErr('AFTER_SHIFT', `Esse horário é depois da sua saída (${fmtTime(s.end)}).`);
+    const br = s.breaks.find((b) => t >= b.s && t < (b.e ?? now()));
+    if (br) throw new AppErr('IN_BREAK', `Nesse horário você estava em pausa (${fmtTime(br.s)}–${br.e ? fmtTime(br.e) : 'agora'}).`);
+  }
   if (requestId) {                           // duplo clique / reenvio: devolve a mesma entrega
     const prev = s.deliveries.find((d) => d.rid === requestId);
     if (prev) return { delivery: prev, created: false };
@@ -729,7 +748,9 @@ function addDelivery(blockRaw, aptRaw, { force = false, at = null, source = 'man
   if (value != null && (!Number.isInteger(value) || value < 0 || value > 1000000)) throw new AppErr('INVALID_VALUE', 'Valor inválido.');
   const d = { id: uid(), t, block, apt: a.apt, floor: a.floor, review: !!review, source, del: false, v: value };
   if (requestId) d.rid = requestId;
+  if (late) { d.late = true; d.regAt = now(); }
   s.deliveries.push(d);
+  s.deliveries.sort((p, q) => p.t - q.t);     // volta para a ordem do horário
   save();
   return { delivery: d, created: true };
 }
@@ -762,7 +783,7 @@ function deleteDelivery(id) {
 function undoDelivery(id) {
   for (const s of DB.shifts) {
     const i = s.deliveries.findIndex((x) => x.id === id);
-    if (i >= 0) { if (now() - s.deliveries[i].t > 120000) throw new AppErr('TOO_LATE', 'Já passou do tempo de desfazer. Exclua pela lista.'); s.deliveries.splice(i, 1); save(); return; }
+    if (i >= 0) { if (now() - (s.deliveries[i].regAt ?? s.deliveries[i].t) > 120000) throw new AppErr('TOO_LATE', 'Já passou do tempo de desfazer. Exclua pela lista.'); s.deliveries.splice(i, 1); save(); return; }
   }
   throw new AppErr('NOT_FOUND', 'Entrega não encontrada.');
 }
@@ -873,14 +894,16 @@ function exportShifts(db) {
     entregas: s.deliveries.map((d) => ({
       id: d.id, t: d.t, bloco: d.block, apto: d.apt, andar: d.floor, valor: d.v ?? null, origem: d.source, conferir: !!d.review,
       original: d.orig ? { bloco: d.orig.block, apto: d.orig.apt, valor: d.orig.v ?? null } : null, editadaEm: d.edAt ?? null,
-      excluida: !!d.del, excluidaEm: d.delAt ?? null,
+      excluida: !!d.del, excluidaEm: d.delAt ?? null, tardia: !!d.late, registradaEm: d.late ? (d.regAt ?? null) : null,
     })),
   }));
 }
-async function buildExport(db, exportedAt = now()) {
+/** `extra` = turnos que já estão com o gerente e não existem mais aqui (somados, nunca perdidos). Em turno com o mesmo id vale o que está neste aparelho. */
+async function buildExport(db, exportedAt = now(), extra = []) {
   const r = riderById(db.user?.id);
   if (!r) throw new AppErr('NO_RIDER', 'Escolha quem você é (Pedro, Bruno, João, Kauã ou Nicolas) em Ajustes.');
-  const turnos = exportShifts(db);
+  const local = exportShifts(db), ids = new Set(local.map((s) => s.id));
+  const turnos = [...local, ...extra.filter((s) => s && typeof s.id === 'string' && Number.isFinite(s.entrada) && !ids.has(s.id))].sort((a, b) => a.entrada - b.entrada);
   const integridade = 'sha256:' + await sha256hex(canonical({ entregador: r.id, turnos }));
   return { formato: EXPORT_FORMAT, versao: 2, entregador: { id: r.id, nome: r.nome }, exportadoEm: exportedAt, turnos, integridade };
 }
@@ -965,6 +988,146 @@ function parseComanda(rawText) {
   else if (block || apt) confidence = 'baixa';
   const val = parseValue(labeled);
   return { block, apt, floor, readable, confidence, needsReview: confidence !== 'alta', value: val.value, valueSure: val.sure };
+}
+
+/* ============================================================
+   Conexão automática entre o aplicativo dos entregadores e a gerência.
+   Os dados vão para um repositório PRIVADO do GitHub (um arquivo por entregador: entregas/<id>.json),
+   usando uma chave de acesso (token) limitada a esse repositório. Cada envio é um commit: fica o histórico.
+   Sem conexão configurada, nada disto roda e continua valendo o envio por arquivo.
+   ============================================================ */
+const SYNC_CFG_KEY = 'ponto-collina:sync';
+const SYNC_DEFAULT_REPO = 'santanadesouzanicolas32-sketch/ponto-dados';
+const SYNC = { cfg: undefined, fetch: null, off: false, timer: null, running: false, again: false, listeners: [], state: { busy: false, ok: false, at: null, err: null } };
+class SyncErr extends Error { constructor(msg, status = 0) { super(msg); this.status = status; } }
+
+/* ---------------- configuração (fica só neste aparelho) ---------------- */
+const validRepo = (r) => typeof r === 'string' && /^[\w.-]{1,100}\/[\w.-]{1,100}$/.test(r);
+const validToken = (t) => typeof t === 'string' && /^[\w-]{20,255}$/.test(t);
+function syncConfig() {
+  if (SYNC.cfg !== undefined) return SYNC.cfg;
+  let c = null;
+  try { const o = JSON.parse(localStorage.getItem(SYNC_CFG_KEY) || 'null'); if (o && validRepo(o.repo) && validToken(o.token)) c = { repo: o.repo, token: o.token }; } catch { /* sem configuração */ }
+  return (SYNC.cfg = c);
+}
+function setSyncConfig(c) {
+  SYNC.cfg = c && validRepo(c.repo) && validToken(c.token) ? { repo: c.repo, token: c.token } : null;
+  try { if (SYNC.cfg) localStorage.setItem(SYNC_CFG_KEY, JSON.stringify(SYNC.cfg)); else localStorage.removeItem(SYNC_CFG_KEY); } catch { /* ignore */ }
+  return SYNC.cfg;
+}
+const b64url = (s) => btoa(String.fromCharCode(...new TextEncoder().encode(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const unb64url = (s) => new TextDecoder().decode(Uint8Array.from(atob(String(s).replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0)));
+/** Link que o gerente manda aos entregadores: leva a conexão no trecho depois do # (não vai para nenhum servidor). */
+function syncLink(base, cfg = syncConfig()) { return cfg ? `${base}#sync=${b64url(JSON.stringify({ r: cfg.repo, t: cfg.token }))}` : null; }
+function parseSyncHash(hash = location.hash) {
+  const m = /^#sync=([\w-]+)$/.exec(hash || '');
+  if (!m) return null;
+  try { const o = JSON.parse(unb64url(m[1])); return validRepo(o.r) && validToken(o.t) ? { repo: o.r, token: o.t } : null; } catch { return null; }
+}
+/** Aplicativo do entregador: se abriu pelo link do gerente, guarda a conexão e limpa o endereço. */
+function adoptSyncHash() {
+  const c = parseSyncHash();
+  if (!c) return false;
+  setSyncConfig(c);
+  try { history.replaceState(null, '', location.pathname + location.search); } catch { /* ignore */ }
+  return true;
+}
+
+/* ---------------- GitHub (contents API) ---------------- */
+async function ghReq(cfg, path, { method = 'GET', accept = 'application/vnd.github+json', headers = {}, body } = {}) {
+  try {
+    return await (SYNC.fetch || fetch)(`https://api.github.com${path}`, {
+      method, cache: 'no-store', body,
+      headers: { Authorization: `Bearer ${cfg.token}`, Accept: accept, 'X-GitHub-Api-Version': '2022-11-28', ...(body ? { 'Content-Type': 'application/json' } : {}), ...headers },
+    });
+  } catch { throw new SyncErr('Sem internet agora.', 0); }
+}
+function ghFail(r) {
+  if (r.status === 401) return new SyncErr('A chave de acesso (token) é inválida ou venceu. Gere outra e conecte de novo.', 401);
+  if (r.status === 403) return new SyncErr(r.headers.get('x-ratelimit-remaining') === '0' ? 'O GitHub pediu uma pausa. Tente de novo em alguns minutos.' : 'A chave de acesso não tem permissão neste repositório (precisa de Contents: leitura e escrita).', 403);
+  if (r.status === 404) return new SyncErr('Repositório não encontrado para esta chave de acesso.', 404);
+  if (r.status === 409 || r.status === 422) return new SyncErr('Conflito de versão.', 409);
+  return new SyncErr(`O GitHub respondeu com erro ${r.status}.`, r.status);
+}
+/** Confere repositório e permissão de escrita. Devolve o nome completo do repositório. */
+async function ghCheck(cfg) {
+  const r = await ghReq(cfg, `/repos/${cfg.repo}`);
+  if (!r.ok) throw ghFail(r);
+  const j = await r.json();
+  if (j.permissions && j.permissions.push === false) throw new SyncErr('Esta chave de acesso só consegue ler. Ela precisa de Contents: leitura e escrita.', 403);
+  return { name: j.full_name || cfg.repo, private: j.private !== false };
+}
+/** Lê um arquivo do repositório. 304 = igual ao que você já tinha (etag). */
+async function ghGetFile(cfg, file, etag = null) {
+  const r = await ghReq(cfg, `/repos/${cfg.repo}/contents/${file}`, { accept: 'application/vnd.github.raw+json', headers: etag ? { 'If-None-Match': etag } : {} });
+  if (r.status === 304) return { status: 304 };
+  if (r.status === 404) return { status: 404 };
+  if (!r.ok) throw ghFail(r);
+  const tag = r.headers.get('etag') || '';
+  return { status: 200, text: await r.text(), etag: tag, sha: tag.replace(/^W\//, '').replace(/"/g, '') };
+}
+function utf8ToB64(text) {
+  const bytes = new TextEncoder().encode(text);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+async function ghPutFile(cfg, file, text, sha, message) {
+  const r = await ghReq(cfg, `/repos/${cfg.repo}/contents/${file}`, { method: 'PUT', body: JSON.stringify({ message, content: utf8ToB64(text), ...(sha ? { sha } : {}) }) });
+  if (!r.ok) throw ghFail(r);
+  const j = await r.json();
+  return j.content?.sha || null;
+}
+
+/* ---------------- estado e avisos para a tela ---------------- */
+function syncSet(patch) { Object.assign(SYNC.state, patch); for (const f of SYNC.listeners) { try { f(SYNC.state); } catch { /* tela fora */ } } }
+const syncText = () => {
+  const s = SYNC.state;
+  if (!syncConfig()) return 'Sem conexão automática';
+  if (s.busy) return 'Enviando…';
+  if (s.err) return s.err;
+  return s.at ? `Enviado às ${fmtTime(s.at)}` : 'Conectado';
+};
+
+/* ---------------- entregador: envia o próprio fechamento ---------------- */
+const exportIntegrity = (text) => { try { return JSON.parse(text).integridade || null; } catch { return null; } };
+/** Envia tudo o que há neste aparelho, somado ao que já está na nuvem (nunca apaga o que o gerente já recebeu). */
+async function syncPush() {
+  const cfg = syncConfig();
+  if (!cfg || SYNC.off || !riderById(DB.user?.id)) return false;
+  if (SYNC.running) { SYNC.again = true; return false; }
+  SYNC.running = true; syncSet({ busy: true });
+  const file = `entregas/${DB.user.id}.json`;
+  let done = false;
+  try {
+    for (let attempt = 0; attempt < 3 && !done; attempt++) {
+      const remote = await ghGetFile(cfg, file);
+      let extra = [];
+      if (remote.status === 200) { try { const o = JSON.parse(remote.text); if (o?.entregador?.id === DB.user.id && Array.isArray(o.turnos)) extra = o.turnos; } catch { /* arquivo ilegível: será refeito */ } }
+      const exp = await buildExport(DB, now(), extra);
+      if (!exp.turnos.length) { syncSet({ busy: false, ok: true, err: null }); return true; }       // nada para enviar ainda
+      const unchanged = remote.status === 200 && exportIntegrity(remote.text) === exp.integridade;
+      if (!unchanged || exp.turnos.some((s) => s.saida == null)) {                                  // turno aberto: renova a hora do envio
+        try { await ghPutFile(cfg, file, JSON.stringify(exp), remote.status === 200 ? remote.sha : null, `${exp.entregador.nome} · ${fmtDateTime(now())}`); }
+        catch (e) { if (e.status === 409 && attempt < 2) continue; throw e; }
+      }
+      done = true;
+    }
+    syncSet({ busy: false, ok: true, at: now(), err: null });
+    return true;
+  } catch (e) {
+    syncSet({ busy: false, ok: false, err: e instanceof SyncErr ? e.message : 'Não consegui enviar agora.' });
+    return false;
+  } finally {
+    SYNC.running = false;
+    if (SYNC.again) { SYNC.again = false; syncSoon(1000); }
+  }
+}
+/** Agenda o envio logo depois da última alteração (junta várias alterações seguidas em um só envio). */
+function syncSoon(ms = 4000) {
+  if (SYNC.off || !syncConfig()) return;
+  clearTimeout(SYNC.timer);
+  SYNC.timer = setTimeout(() => { syncPush(); }, ms);
 }
 
 /* Componentes de interface compartilhados: folhas (modais), avisos, ações por delegação de eventos. */
@@ -1089,7 +1252,8 @@ function cleanShifts(raw, riderId) {
         const b = normalizeBlock(d.bloco), a = normalizeApt(d.apto);
         const e = { id: str(d.id, 64) || `${sh.id}-${d.t}`, t: d.t, bloco: b, apto: a.apt, andar: a.floor, valor: isInt(d.valor) && d.valor >= 0 && d.valor <= 1000000 ? d.valor : null,
           origem: d.origem === 'foto' || d.origem === 'photo' ? 'photo' : 'manual', conferir: !!d.conferir, original: null, editadaEm: isNum(d.editadaEm) ? d.editadaEm : null,
-          excluida: !!d.excluida, excluidaEm: isNum(d.excluidaEm) ? d.excluidaEm : null };
+          excluida: !!d.excluida, excluidaEm: isNum(d.excluidaEm) ? d.excluidaEm : null,
+          tardia: !!d.tardia && isNum(d.registradaEm), registradaEm: d.tardia && isNum(d.registradaEm) ? d.registradaEm : null };
         if (d.original && typeof d.original === 'object') {
           try { const ob = normalizeBlock(d.original.bloco), oa = normalizeApt(d.original.apto); e.original = { bloco: ob, apto: oa.apt, valor: isInt(d.original.valor) ? d.original.valor : null }; } catch { /* ignora */ }
         }
@@ -1235,18 +1399,18 @@ function sliceShifts(R, preset) { return compute().shifts.filter((s) => s.data >
 
 /* ---------------- métricas (mesma regra para todos) ---------------- */
 function aggregate(shifts) {
-  let n = 0, sales = 0, nv = 0, net = 0, photo = 0, edited = 0, deleted = 0, all = 0, late = 0, over = 0, auto = 0;
+  let n = 0, sales = 0, nv = 0, net = 0, photo = 0, edited = 0, deleted = 0, all = 0, late = 0, over = 0, auto = 0, posted = 0;
   const days = new Set();
   for (const s of shifts) {
     net += s.sm.net; days.add(s.data); if (s.sm.lateS) late++; over += s.sm.over; if (s.auto) auto++;
     all += s.dels.length; deleted += s.dels.length - s.live.length;
-    for (const d of s.live) { n++; if (d.valor != null) { sales += d.valor; nv++; } if (d.origem === 'photo') photo++; if (d.original) edited++; }
+    for (const d of s.live) { n++; if (d.valor != null) { sales += d.valor; nv++; } if (d.origem === 'photo') photo++; if (d.original) edited++; if (d.tardia) posted++; }
   }
   return {
     shifts: shifts.length, days: days.size, n, sales, nv, net, late, over, auto,
     perHour: net >= MIN_NET_FOR_RATE ? n / (net / 3600) : null, enough: net >= MIN_NET_FOR_RATE,
     ticket: nv ? sales / nv : null, salesHour: net >= MIN_NET_FOR_RATE ? sales / (net / 3600) : null,
-    coverage: n ? nv / n : null, photoPct: n ? photo / n : null, editedPct: n ? edited / n : null, deletedPct: all ? deleted / all : null,
+    coverage: n ? nv / n : null, photoPct: n ? photo / n : null, editedPct: n ? edited / n : null, postedPct: n ? posted / n : null, deletedPct: all ? deleted / all : null,
   };
 }
 
@@ -1301,9 +1465,12 @@ function queryDeliveries(q) {
     if (q.status === 'editada' && !d.original) return false;
     if (q.status === 'excluida' && !d.excluida) return false;
     if (q.status === 'conferir' && !d.conferir) return false;
+    if (q.status === 'tardia' && !d.tardia) return false;
     return true;
   });
 }
+/** 35 min · 1h05 */
+const fmtLag = (ms) => { const m = Math.max(0, Math.round(ms / 60000)); return m < 60 ? `${m} min` : `${Math.floor(m / 60)}h${String(m % 60).padStart(2, '0')}`; };
 const statusOf = (d) => (d.excluida ? 'Excluída' : d.original ? 'Corrigida' : d.conferir ? 'Para conferir' : 'Normal');
 
 /** Dados desatualizados e outros pontos de atenção na base. */
@@ -1324,6 +1491,116 @@ function dataQuality() {
   }
   if (Object.values(ST.riders).some((x) => x.turnos.some((s) => s._ex))) items.unshift({ level: 'warn', text: 'Há dados de EXEMPLO misturados. Remova-os em Dados antes de analisar.' });
   return items;
+}
+
+/* ============================================================
+   Gerência: conexão automática - busca o que os entregadores enviaram (repositório privado do GitHub).
+   ============================================================ */
+let ETAGS = {};
+try { ETAGS = JSON.parse(localStorage.getItem('ponto-gerente:etags') || '{}') || {}; } catch { ETAGS = {}; }
+const saveEtags = () => { if (!MPERSIST) return; try { localStorage.setItem('ponto-gerente:etags', JSON.stringify(ETAGS)); } catch { /* ignore */ } };
+const PULL = { busy: false, at: null, err: null, report: [] };
+
+/** Baixa o arquivo de cada entregador (só os que mudaram), confere a integridade e junta à base. */
+async function syncPull({ force = false } = {}) {
+  const cfg = syncConfig();
+  if (!cfg || PULL.busy) return null;
+  PULL.busy = true; PULL.err = null;
+  const report = []; let changed = 0;
+  try {
+    for (const r of ROSTER) {
+      const g = await ghGetFile(cfg, `entregas/${r.id}.json`, force ? null : ETAGS[r.id]);
+      if (g.status === 304) { report.push({ id: r.id, estado: 'igual' }); continue; }
+      if (g.status === 404) { report.push({ id: r.id, estado: 'sem arquivo' }); continue; }
+      let dono = null;
+      try { dono = JSON.parse(g.text)?.entregador?.id; } catch { /* importTexts explica */ }
+      if (dono && dono !== r.id) { report.push({ id: r.id, estado: 'erro', erro: 'O arquivo desta pasta pertence a outro entregador.' }); continue; }
+      const x = (await importTexts([{ name: `nuvem · ${r.nome}`, text: g.text }]))[0];
+      if (x && x.ok) { ETAGS[r.id] = g.etag; changed++; report.push({ id: r.id, estado: 'atualizado', ...x }); }
+      else report.push({ id: r.id, estado: 'erro', erro: x ? x.erro : 'Arquivo ilegível.' });
+    }
+    saveEtags();
+    if (changed) await mSave();
+    PULL.at = Date.now();
+  } catch (e) {
+    PULL.err = e instanceof SyncErr ? e.message : 'Não consegui atualizar agora.';
+  } finally { PULL.busy = false; PULL.report = report; }
+  return { changed, report };
+}
+
+function connectCard() {
+  const cfg = syncConfig();
+  if (cfg) {
+    return `<div class="card"><h2>Conexão automática</h2>
+      <div class="issue ${PULL.err ? 'warn' : ''}"><i style="background:${PULL.err ? 'var(--bad)' : 'var(--ok)'}"></i><span>${PULL.err ? esc(PULL.err) : `Conectado a <b>${esc(cfg.repo)}</b>${PULL.at ? ` · conferido às ${fmtTime(PULL.at)}` : ''}`}<br><span class="note">Os registros dos entregadores chegam sozinhos (confere a cada minuto com esta página aberta).</span></span></div>
+      <div class="grid2" style="margin-top:10px"><button class="btn sm gold" data-act="m-pull">Atualizar agora</button><button class="btn sm" data-act="m-link">Link para os entregadores</button></div>
+      <button class="linkbtn" data-act="m-unlink" style="margin-top:8px">Desconectar este navegador</button></div>`;
+  }
+  return `<div class="card"><h2>Conexão automática</h2>
+    <p class="note" style="margin:0 0 8px">Receba os registros dos entregadores sem trocar arquivos. Configuração única, uns 3 minutos:</p>
+    <ol class="note" style="margin:0 0 10px;padding-left:20px;line-height:1.6">
+      <li>Abra <a class="gold" href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a> (conta dona do repositório).</li>
+      <li>Nome: <b>ponto-collina</b> · validade: 1 ano · <b>Only select repositories</b> → <b>ponto-dados</b>.</li>
+      <li>Em <b>Repository permissions</b>, ponha <b>Contents: Read and write</b>. Clique em <b>Generate token</b> e copie.</li>
+      <li>Cole abaixo e toque em Conectar.</li></ol>
+    <label for="cRepo">Repositório</label><input id="cRepo" value="${esc(SYNC_DEFAULT_REPO)}" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <label for="cTok">Token (chave de acesso)</label><input id="cTok" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="github_pat_…">
+    <p id="cErr" class="lerr" role="alert" style="text-align:left;margin:8px 0 0"></p>
+    <button class="btn gold" id="cGo" style="margin-top:10px">Conectar</button></div>`;
+}
+function bindConnect() {
+  const go = $('cGo');
+  if (!go) return;
+  go.onclick = () => busy(go, async () => {
+    const err = (m) => { $('cErr').textContent = m || ''; };
+    err('');
+    const repo = $('cRepo').value.trim().replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '').replace(/\/+$/, ''), token = $('cTok').value.trim();
+    if (!validRepo(repo)) return err('Escreva o repositório assim: dono/nome.');
+    if (!validToken(token)) return err('Cole o token inteiro (começa com github_pat_ ou ghp_).');
+    try {
+      const info = await ghCheck({ repo, token });
+      setSyncConfig({ repo, token });
+      PULL.err = null;
+      toast(info.private ? 'Conectado' : 'Conectado (atenção: este repositório é público)', 3500);
+      await syncPull({ force: true });
+      mRender();
+      showLink();
+    } catch (e) { err(e instanceof SyncErr ? e.message : 'Não consegui conectar.'); }
+  });
+}
+/** Link que o gerente manda aos entregadores. */
+function showLink() {
+  const base = new URL('./', location.href).href, link = syncLink(base);
+  if (!link) return;
+  sheet(`<h3>Link para os entregadores</h3>
+    <p class="mut" style="font-size:14px">Mande para cada entregador abrir <b>uma vez</b> no celular dele. A conexão fica guardada e os registros passam a chegar sozinhos.</p>
+    <textarea id="lnk" readonly rows="4" style="width:100%;font-size:12px">${esc(link)}</textarea>
+    <p class="note">O link leva a chave de acesso do repositório: envie só aos entregadores, no privado.</p>
+    <div class="grid2" style="margin-top:12px"><button class="btn gold" id="lnkCopy">Copiar</button><button class="btn" id="lnkClose">Fechar</button></div>`);
+  $('lnkClose').onclick = closeSheet;
+  $('lnkCopy').onclick = async () => {
+    try { if (navigator.share) { await navigator.share({ title: 'Ponto de Entregas Collina', text: 'Abra este link uma vez no seu celular:', url: link }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+    try { await navigator.clipboard.writeText(link); toast('Link copiado'); } catch { $('lnk').select(); toast('Selecione e copie o link'); }
+  };
+}
+actions['m-link'] = showLink;
+actions['m-pull'] = (el) => busy(el, async () => {
+  const r = await syncPull();
+  if (!r) return toast('Sem conexão configurada');
+  if (PULL.err) toast(PULL.err, 4500); else toast(r.changed ? 'Dados atualizados' : 'Nada de novo', 2500);
+  if (!sheetOpen()) mRender();
+});
+actions['m-unlink'] = (el) => {
+  if (!el.dataset.sure) { el.dataset.sure = '1'; el.textContent = 'Toque de novo para desconectar'; return; }
+  setSyncConfig(null); ETAGS = {}; saveEtags(); PULL.at = null; PULL.err = null; mRender(); toast('Desconectado (os dados já baixados continuam aqui)');
+};
+/** Confere a nuvem de tempos em tempos enquanto a página está aberta. */
+async function pullTick() {
+  if (!syncConfig() || document.hidden) return;
+  const r = await syncPull();
+  if (!r) return;
+  if (!sheetOpen() && (r.changed || PULL.err)) mRender();
+  else $('topSub').textContent = $('topSub').textContent.replace(/ · ✓ .*$/, '') + ` · ✓ ${fmtTime(PULL.at)}`;
 }
 
 /* ============================================================
@@ -1359,7 +1636,9 @@ actions['m-import'] = () => $('mfile').click();
 function mRender() {
   document.querySelectorAll('#nav button').forEach((b) => { const on = b.dataset.tab === MG.tab; b.classList.toggle('on', on); if (on) $('pageTitle').textContent = b.dataset.name; });
   const lastUp = Math.max(0, ...Object.values(ST.riders).map((r) => r.exportadoEm || 0));
-  $('topSub').textContent = lastUp ? `Dados até ${fmtDateTime(lastUp)}` : 'Sem dados importados';
+  const linked = !!syncConfig();
+  $('topSub').textContent = (lastUp ? `Dados até ${fmtDateTime(lastUp)}` : 'Sem dados importados') + (linked && PULL.at ? ` · ✓ ${fmtTime(PULL.at)}` : '');
+  $('mPull').classList.toggle('hide', !linked); $('mImp').style.marginLeft = linked ? '0' : 'auto';
   const view = $('view');
   try {
     if (MG.tab === 'geral') renderGeral(view); else if (MG.tab === 'ind') renderInd(view); else if (MG.tab === 'cons') renderCons(view); else renderDados(view);
@@ -1549,7 +1828,7 @@ function renderInd(el) {
     <div class="card"><h2>Mapa de calor · dia da semana × hora</h2>${heatmap(rs)}</div>
     <div class="card"><h2>Qualidade do registro</h2><div class="kvlist">
       <div class="kv"><span>Entregas lidas por foto</span><span>${pc(A.photoPct)}</span></div><div class="kv"><span>Entregas com valor informado</span><span>${pc(A.coverage)}</span></div>
-      <div class="kv"><span>Entregas corrigidas depois</span><span>${pc(A.editedPct)}</span></div><div class="kv"><span>Entregas excluídas</span><span>${pc(A.deletedPct)}</span></div>
+      <div class="kv"><span>Entregas lançadas depois (esquecidas)</span><span>${pc(A.postedPct)}</span></div><div class="kv"><span>Entregas corrigidas depois</span><span>${pc(A.editedPct)}</span></div><div class="kv"><span>Entregas excluídas</span><span>${pc(A.deletedPct)}</span></div>
       <div class="kv"><span>Saídas esquecidas (fechadas automaticamente)</span><span>${A.auto}</span></div></div></div>
     <div class="card"><h2>Turnos · toque para ver os registros</h2><div class="scroll"><table class="mtable"><tr><th>Dia</th><th>Entrada</th><th>Saída</th><th>Líquido</th><th>Entr.</th><th>Entr./h</th><th>Vendido</th><th>Obs.</th></tr>
       ${ordered.slice(0, 60).map((s) => { const sv = s.live.reduce((a, d) => a + (d.valor || 0), 0), ph = s.sm.net >= 1800 ? s.live.length / (s.sm.net / 3600) : null; return `<tr data-act="m-shift" data-r="${s.rid}" data-s="${esc(s.id)}"><td>${ymdToDm(s.data)}</td><td>${fmtTime(s.entrada)}</td><td>${s.saida ? fmtTime(s.saida) : '<span class="gold">aberto</span>'}</td><td>${dur(s.sm.net)}</td><td>${s.live.length}</td><td>${num(ph)}</td><td>${brl(sv)}</td><td>${[s.sm.lateS ? 'atraso ' + dur(s.sm.lateS) : '', s.sm.over ? 'extra ' + dur(s.sm.over) : '', s.auto ? 'saída automática' : '', s.ex ? 'EXEMPLO' : ''].filter(Boolean).join(', ') || '—'}</td></tr>`; }).join('')}</table></div></div>`}`;
@@ -1565,7 +1844,7 @@ actions['m-shift'] = (el) => {
       <div class="kv"><span>Pausas</span><span>${s.pausas.length ? s.pausas.map((p) => `${fmtTime(p.i)}–${p.f ? fmtTime(p.f) : '…'}`).join(' · ') : 'nenhuma'}</span></div>
       <div class="kv"><span>Horas líquidas</span><span>${dur(s.sm.net)}</span></div></div>
     <h2 style="margin:14px 0 4px">Registros (${s.live.length}${ds.length !== s.live.length ? ` + ${ds.length - s.live.length} excluídas` : ''})</h2>
-    ${ds.map((d) => `<button class="item" data-act="m-del" data-r="${s.rid}" data-d="${esc(d.id)}"><span class="dest">${esc(d.bloco)} ${esc(d.apto)}</span><span class="t">${fmtTimeSec(d.t)}</span>${d.excluida ? '<span class="badge">EXCLUÍDA</span>' : d.original ? '<span class="badge">CORRIGIDA</span>' : ''}${d.valor != null ? `<span class="gold amt">${brl(d.valor)}</span>` : ''}</button>`).join('') || '<div class="empty">Sem registros.</div>'}
+    ${ds.map((d) => `<button class="item" data-act="m-del" data-r="${s.rid}" data-d="${esc(d.id)}"><span class="dest">${esc(d.bloco)} ${esc(d.apto)}</span><span class="t">${fmtTimeSec(d.t)}</span>${d.excluida ? '<span class="badge">EXCLUÍDA</span>' : d.original ? '<span class="badge">CORRIGIDA</span>' : ''}${d.tardia ? '<span class="badge">DEPOIS</span>' : ''}${d.valor != null ? `<span class="gold amt">${brl(d.valor)}</span>` : ''}</button>`).join('') || '<div class="empty">Sem registros.</div>'}
     <button class="btn" id="mClose" style="margin-top:14px">Fechar</button>`);
   $('mClose').onclick = closeSheet;
 };
@@ -1585,6 +1864,7 @@ actions['m-del'] = (el) => {
       <div class="kv"><span>Valor da comanda</span><span>${d.valor != null ? brl(d.valor) : 'não informado'}</span></div>
       <div class="kv"><span>Origem</span><span>${d.origem === 'photo' ? 'foto da comanda' : 'digitado'}</span></div>
       <div class="kv"><span>Situação</span><span>${statusOf(d)}</span></div>
+      ${d.tardia ? `<div class="kv"><span>Lançada depois</span><span>entrega às ${fmtTimeSec(d.t)} · registrada às ${fmtTimeSec(d.registradaEm)} (${fmtLag(d.registradaEm - d.t)} depois)</span></div>` : ''}
       ${d.original ? `<div class="kv"><span>Valores originais</span><span>${esc(d.original.bloco)} ${esc(d.original.apto)} · ${d.original.valor != null ? brl(d.original.valor) : 'sem valor'}</span></div><div class="kv"><span>Corrigida em</span><span>${d.editadaEm ? fmtDateTime(d.editadaEm) : '—'}</span></div>` : ''}
       ${d.excluida ? `<div class="kv"><span>Excluída em</span><span>${d.excluidaEm ? fmtDateTime(d.excluidaEm) : '—'}</span></div>` : ''}
       <div class="kv"><span>Turno</span><span>${fmtTime(s.entrada)} – ${s.saida ? fmtTime(s.saida) : 'aberto'}</span></div>
@@ -1607,7 +1887,7 @@ function renderCons(el) {
       <div><label for="qApt">Apartamento</label><input id="qApt" maxlength="8" placeholder="ex.: 241" value="${esc(q.apt)}"></div>
       <div><label for="qVMin">Valor mínimo (R$)</label><input id="qVMin" inputmode="decimal" placeholder="0,00" value="${esc(q.vMin)}"></div><div><label for="qVMax">Valor máximo (R$)</label><input id="qVMax" inputmode="decimal" placeholder="0,00" value="${esc(q.vMax)}"></div>
       <div><label for="qSrc">Origem</label><select id="qSrc"><option value="">Todas</option><option value="photo" ${q.source === 'photo' ? 'selected' : ''}>Foto</option><option value="manual" ${q.source === 'manual' ? 'selected' : ''}>Digitado</option></select></div>
-      <div><label for="qSt">Situação</label><select id="qSt"><option value="">Todas</option>${[['normal', 'Normal'], ['editada', 'Corrigida'], ['excluida', 'Excluída'], ['conferir', 'Para conferir']].map(([k, l]) => `<option value="${k}" ${q.status === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
+      <div><label for="qSt">Situação</label><select id="qSt"><option value="">Todas</option>${[['normal', 'Normal'], ['editada', 'Corrigida'], ['excluida', 'Excluída'], ['conferir', 'Para conferir'], ['tardia', 'Lançada depois']].map(([k, l]) => `<option value="${k}" ${q.status === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
     <div class="grid2" style="margin-top:12px"><button class="btn" data-act="m-qclear">Limpar</button><button class="btn gold" data-act="m-qgo">Consultar</button></div></div>
     <div id="qres"></div>`;
   ['qFrom', 'qTo', 'qTF', 'qTT', 'qBlock', 'qSrc', 'qSt'].forEach((id) => { $(id).onchange = readQ; });
@@ -1638,7 +1918,7 @@ function drawCons() {
   const th = (kk, l, cls = '') => `<th class="${cls}" style="cursor:pointer" data-act="m-qsort" data-k="${kk}">${l}${k === kk ? (dir > 0 ? ' ▲' : ' ▼') : ''}</th>`;
   box.innerHTML = `<div class="card"><div class="row-between" style="margin-bottom:10px"><h2 style="margin:0">${rows.length} registro(s) · ${brl(sum)}</h2><button class="btn sm" data-act="m-qcsv" ${rows.length ? '' : 'disabled'}>Baixar planilha</button></div>
     ${shown.length ? `<div class="scroll"><table class="mtable"><tr>${th('r', 'Entregador')}${th('t', 'Data e hora')}${th('b', 'Pedido')}${th('v', 'Valor')}<th>Origem</th><th>Situação</th></tr>
-      ${shown.map((d) => `<tr data-act="m-del" data-r="${d.rid}" data-d="${esc(d.id)}"><td>${rlabel(d.rid)}</td><td>${fmtDM(d.t)} ${fmtTimeSec(d.t)}</td><td>${esc(d.bloco)} ${esc(d.apto)}</td><td>${d.valor != null ? brl(d.valor) : '<span class="low">—</span>'}</td><td>${d.origem === 'photo' ? 'foto' : 'digitado'}</td><td>${statusOf(d)}</td></tr>`).join('')}</table></div>
+      ${shown.map((d) => `<tr data-act="m-del" data-r="${d.rid}" data-d="${esc(d.id)}"><td>${rlabel(d.rid)}</td><td>${fmtDM(d.t)} ${fmtTimeSec(d.t)}</td><td>${esc(d.bloco)} ${esc(d.apto)}</td><td>${d.valor != null ? brl(d.valor) : '<span class="low">—</span>'}</td><td>${d.origem === 'photo' ? 'foto' : 'digitado'}</td><td>${statusOf(d)}${d.tardia ? ' · depois' : ''}</td></tr>`).join('')}</table></div>
       ${shown.length < rows.length ? '<button class="btn sm loadmore" data-act="m-qmore">Carregar mais</button>' : ''}` : '<div class="empty">Nenhum registro com esses filtros.</div>'}</div>`;
 }
 actions['m-qsort'] = (el) => { const k = el.dataset.k; MG.qsort = { k, dir: MG.qsort.k === k ? -MG.qsort.dir : (k === 't' || k === 'v' ? -1 : 1) }; drawCons(); };
@@ -1646,7 +1926,7 @@ actions['m-qmore'] = () => { MG.qpage++; drawCons(); };
 actions['m-qcsv'] = () => {
   const { f } = qFilters(), rows = queryDeliveries(f).sort((a, b) => a.t - b.t);
   const head = ['Entregador', 'Data', 'Hora', 'Bloco', 'Apartamento', 'Andar', 'Valor (R$)', 'Origem', 'Situacao', 'Original', 'Corrigida em', 'Excluida em'];
-  const body = rows.map((d) => [rname(d.rid), d.data, fmtTimeSec(d.t), d.bloco, d.apto, d.andar === 0 ? 'SS' : d.andar, d.valor == null ? '' : (d.valor / 100).toFixed(2).replace('.', ','), d.origem === 'photo' ? 'foto' : 'digitado', statusOf(d),
+  const body = rows.map((d) => [rname(d.rid), d.data, fmtTimeSec(d.t), d.bloco, d.apto, d.andar === 0 ? 'SS' : d.andar, d.valor == null ? '' : (d.valor / 100).toFixed(2).replace('.', ','), d.origem === 'photo' ? 'foto' : 'digitado', statusOf(d) + (d.tardia ? ' (lançada depois)' : ''),
     d.original ? `${d.original.bloco} ${d.original.apto} ${d.original.valor == null ? '' : (d.original.valor / 100).toFixed(2).replace('.', ',')}` : '', d.editadaEm ? fmtDateTime(d.editadaEm) : '', d.excluidaEm ? fmtDateTime(d.excluidaEm) : '']);
   download(`registros-${ymdOf(now())}.csv`, '﻿' + [head, ...body].map((r) => r.map(csvCell).join(';')).join('\r\n'), 'text/csv;charset=utf-8');
   toast(`${rows.length} registros na planilha`);
@@ -1655,7 +1935,7 @@ actions['m-qcsv'] = () => {
 /* ---------------- DADOS (importação e qualidade) ---------------- */
 function renderDados(el) {
   const q = dataQuality();
-  el.innerHTML = `<div class="card"><h2>Importar fechamentos</h2>
+  el.innerHTML = connectCard() + `<div class="card"><h2>Importar fechamentos</h2>
       <div class="drop" id="drop" data-act="m-import" role="button" tabindex="0">Toque aqui ou arraste os arquivos <b>.json</b> dos entregadores<br><span style="font-size:12px">Pode importar vários de uma vez. Reimportar não duplica: vale o arquivo mais recente de cada turno.</span></div></div>
     <div class="card"><h2>Situação por entregador</h2><div class="scroll"><table class="mtable"><tr><th>Entregador</th><th>Último envio</th><th>Turnos</th><th>Entregas</th><th>Arquivos</th><th>Situação</th></tr>
       ${ROSTER.map((r) => { const x = ST.riders[r.id]; if (!x) return `<tr><td>${rlabel(r.id)}</td><td class="low" colspan="4">nenhum arquivo importado</td><td><span class="statpill warn">sem dados</span></td></tr>`;
@@ -1665,6 +1945,7 @@ function renderDados(el) {
     <div class="card"><h2>Sobre os dados</h2><p class="note" style="margin:0">Os números vêm exclusivamente dos arquivos que cada entregador enviou pelo aplicativo (<b>Ajustes → Enviar fechamento ao gerente</b>). Cada arquivo tem um código de integridade: se for alterado depois de gerado, a importação recusa. Os dados ficam só neste navegador. <button class="linkbtn" data-act="m-method">Como a comparação é feita</button></p></div>
     <div class="card"><h2>Manutenção</h2><div class="grid2"><button class="btn sm" data-act="m-export">Baixar tudo (consolidado)</button><button class="btn sm" data-act="m-rmex">Remover dados de exemplo</button></div>
       <button class="btn sm red" data-act="m-wipe" style="width:100%;margin-top:8px">Apagar todos os dados</button></div>`;
+  bindConnect();
   const drop = $('drop');
   drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
   drop.addEventListener('dragleave', () => drop.classList.remove('over'));
@@ -1693,7 +1974,7 @@ actions['m-rmex'] = async () => {
 };
 actions['m-wipe'] = async (el) => {
   if (!el.dataset.sure) { el.dataset.sure = '1'; el.textContent = 'Toque de novo para apagar TUDO'; return; }
-  ST = { v: 1, riders: {} }; await mSave(); mRender(); toast('Dados apagados');
+  ST = { v: 1, riders: {} }; ETAGS = {}; saveEtags(); await mSave(); mRender(); toast('Dados apagados deste navegador');
 };
 
 async function mgrBoot() {
@@ -1704,6 +1985,9 @@ async function mgrBoot() {
   buildMNav(); $('boot').classList.add('hide'); $('app').classList.remove('hide');
   const first = ROSTER.find((r) => ST.riders[r.id]); if (first && !ST.riders[MG.rider]) MG.rider = first.id;
   mRender();
+  pullTick();
+  setInterval(pullTick, 60000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) pullTick(); });
 }
 
 /* ============================================================
@@ -1712,7 +1996,40 @@ async function mgrBoot() {
    ============================================================ */
 async function runMgrTests() {
   const results = [];
-  const saved = { ST, MPERSIST, fixedNow, MC };
+  const saved = { ST, MPERSIST, fixedNow, MC, DB, persist, cfg: SYNC.cfg, fetch: SYNC.fetch, off: SYNC.off, etags: ETAGS, state: { ...SYNC.state }, pull: { ...PULL } };
+  // GitHub de mentira, em memória: mesmas regras do real (token, sha/etag, 304, 404, 409/422)
+  const TOKEN = 'github_pat_TESTE0000000000000000';
+  const fakeGh = () => {
+    const files = {}, g = { files, puts: 0, gets: 0, beforePut: null, offline: false, token: TOKEN };
+    let n = 0;
+    const res = (status, body, headers = {}) => ({ ok: status >= 200 && status < 300, status, headers: { get: (k) => headers[k.toLowerCase()] ?? null }, text: async () => body, json: async () => JSON.parse(body) });
+    g.fetch = async (url, o = {}) => {
+      if (g.offline) throw new TypeError('Failed to fetch');
+      if (o.headers.Authorization !== `Bearer ${g.token}`) return res(401, '{"message":"Bad credentials"}');
+      const path = url.replace('https://api.github.com', ''), repo = /^\/repos\/([^/]+\/[^/]+)$/.exec(path), file = /^\/repos\/[^/]+\/[^/]+\/contents\/(.+)$/.exec(path);
+      if (repo) return res(200, JSON.stringify({ full_name: repo[1], private: true, permissions: { push: true } }));
+      const f = decodeURIComponent(file[1]);
+      if ((o.method || 'GET') === 'GET') {
+        g.gets++;
+        if (!files[f]) return res(404, '{"message":"Not Found"}');
+        const etag = `"${files[f].sha}"`;
+        return o.headers['If-None-Match'] === etag ? res(304, '', { etag }) : res(200, files[f].text, { etag });
+      }
+      g.puts++;
+      if (g.beforePut) { const h = g.beforePut; g.beforePut = null; h(); }
+      const b = JSON.parse(o.body);
+      if (files[f] && !b.sha) return res(422, '{"message":"sha wasn\'t supplied"}');
+      if (files[f] && files[f].sha !== b.sha) return res(409, '{"message":"does not match"}');
+      files[f] = { text: new TextDecoder().decode(Uint8Array.from(atob(b.content), (c) => c.charCodeAt(0))), sha: `sha${++n}`, message: b.message };
+      return res(200, JSON.stringify({ content: { sha: files[f].sha } }));
+    };
+    return g;
+  };
+  const withGh = async (fn) => {
+    const g = fakeGh(); SYNC.fetch = g.fetch; SYNC.cfg = { repo: 'dono/ponto-dados', token: g.token }; SYNC.off = false; ETAGS = {}; PULL.err = null; PULL.at = null;
+    DB = emptyDb(); DB.user = { name: 'João', id: 'joao', goal: 60 }; persist = false;
+    try { await fn(g); } finally { SYNC.fetch = null; }
+  };
   const eq = (a, b, m = '') => { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(`${m} esperado ${JSON.stringify(b)} obtido ${JSON.stringify(a)}`); };
   const ok = (c, m = 'condição falsa') => { if (!c) throw new Error(m); };
   const near = (a, b, tol, m = '') => { if (a == null || Math.abs(a - b) > tol) throw new Error(`${m} esperado ~${b} obtido ${a}`); };
@@ -1744,7 +2061,7 @@ async function runMgrTests() {
     await T('fechamento: formato v2 com integridade que não muda com a ordem das chaves', async () => {
       const e = await mkExport('nicolas', [mkShift('2026-10-06', 15, [15, 3], [23, 20], [[16, 5, 'C1', '241', 5290]])]);
       eq([e.formato, e.versao, e.entregador], ['ponto-collina/entregas', 2, { id: 'nicolas', nome: 'Nicolas' }]); ok(/^sha256:[0-9a-f]{64}$/.test(e.integridade));
-      eq(e.turnos[0].entregas[0], { id: 'd-2026-10-06-0', t: at('2026-10-06', 16, 5), bloco: 'C1', apto: '241', andar: 24, valor: 5290, origem: 'manual', conferir: false, original: null, editadaEm: null, excluida: false, excluidaEm: null });
+      eq(e.turnos[0].entregas[0], { id: 'd-2026-10-06-0', t: at('2026-10-06', 16, 5), bloco: 'C1', apto: '241', andar: 24, valor: 5290, origem: 'manual', conferir: false, original: null, editadaEm: null, excluida: false, excluidaEm: null, tardia: false, registradaEm: null });
       eq(canonical({ b: 1, a: [2, { d: null, c: 'x' }] }), '{"a":[2,{"c":"x","d":null}],"b":1}');
       eq(await sha256hex('abc'), 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
     });
@@ -1899,6 +2216,96 @@ async function runMgrTests() {
       ok(t.includes('Pedro: dados só até') && t.includes('Joao') === false && t.includes('João: nenhum arquivo') && t.includes('Bruno: mais de um turno no mesmo dia'), t);
     });
 
+    /* ---- conexão automática ---- */
+    await T('conexão: o link do gerente leva repositório e chave, e link torto é ignorado', () => {
+      const c = { repo: 'dono/ponto-dados', token: TOKEN }, link = syncLink('https://x.github.io/app/', c);
+      ok(link.startsWith('https://x.github.io/app/#sync='));
+      eq(parseSyncHash('#' + link.split('#')[1]), c);
+      eq([parseSyncHash('#sync=@@@'), parseSyncHash(''), parseSyncHash('#sync=' + b64url('{"r":"a b","t":"curto"}')), parseSyncHash('#outra=1')], [null, null, null, null]);
+      eq(unb64url(b64url('João é ção')), 'João é ção');
+    });
+    await T('conexão: o entregador envia, o gerente recebe e confere a integridade', async () => {
+      await withGh(async (g) => {
+        DB.shifts = [mkShift('2026-10-06', 15, [15, 3], [23, 20], [[16, 5, 'C1', '241', 5290], [17, 0, 'B2', '12', null]])];
+        eq(await syncPush(), true); eq([g.puts, SYNC.state.ok, SYNC.state.err], [1, true, null]);
+        ok(g.files['entregas/joao.json'].message.startsWith('João'), 'mensagem do commit');
+        const r = await syncPull(); eq([r.changed, PULL.err], [1, null]);
+        eq(ST.riders.joao.turnos[0].entregas.map((e) => e.apto), ['241', '12']); eq(r.report.filter((x) => x.estado === 'sem arquivo').length, 4);
+      });
+    });
+    await T('conexão: reenvio sem mudança não gera nada novo; turno aberto renova a hora do envio', async () => {
+      await withGh(async (g) => {
+        DB.shifts = [mkShift('2026-10-06', 15, [15, 3], [23, 20], [[16, 5, 'C1', '241', 5290]])];
+        await syncPush(); await syncPush(); eq(g.puts, 1);
+        DB.shifts = [mkShift('2026-10-06', 15, [15, 3], [null], [[16, 5, 'C1', '241', 5290]])];
+        await syncPush(); await syncPush(); eq(g.puts, 3);
+      });
+    });
+    await T('conexão: o que já está com o gerente nunca se perde (aparelho novo ou dados apagados)', async () => {
+      await withGh(async (g) => {
+        DB.shifts = [mkShift('2026-10-05', 15, [15, 0], [23, 0], [[16, 0, 'A1', '111', 1000]]), mkShift('2026-10-06', 15, [15, 0], [23, 0], [[16, 0, 'B1', '222', 2000]])];
+        await syncPush();
+        DB.shifts = [mkShift('2026-10-07', 15, [15, 0], [null], [[16, 0, 'C1', '281', 3000]])];        // aparelho novo: só tem o turno de hoje
+        await syncPush();
+        await syncPull({ force: true });
+        eq(ST.riders.joao.turnos.map((s) => s.data), ['2026-10-05', '2026-10-06', '2026-10-07']);
+        DB.shifts = []; await syncPush();                                                               // dados apagados: não apaga a nuvem
+        eq(JSON.parse(g.files['entregas/joao.json'].text).turnos.length, 3);
+      });
+    });
+    await T('conexão: se outro envio chega no meio, tenta de novo com a versão certa', async () => {
+      await withGh(async (g) => {
+        DB.shifts = [mkShift('2026-10-06', 15, [15, 0], [23, 0], [[16, 0, 'A1', '111', 1000]])];
+        await syncPush();
+        DB.shifts.push(mkShift('2026-10-07', 15, [15, 0], [23, 0], [[16, 0, 'B1', '222', 2000]]));
+        g.beforePut = () => { g.files['entregas/joao.json'].sha = 'outra-versao'; };
+        eq(await syncPush(), true); eq(g.puts, 3); eq(JSON.parse(g.files['entregas/joao.json'].text).turnos.length, 2);
+      });
+    });
+    await T('conexão: busca só o que mudou (304) e recusa arquivo de outro entregador', async () => {
+      await withGh(async (g) => {
+        DB.shifts = [mkShift('2026-10-06', 15, [15, 0], [23, 0], [[16, 0, 'A1', '111', 1000]])];
+        await syncPush(); await syncPull(); const getsA = g.gets;
+        const r2 = await syncPull(); eq(r2.changed, 0); eq(r2.report.find((x) => x.id === 'joao').estado, 'igual'); eq(g.gets - getsA, 5);
+        g.files['entregas/pedro.json'] = { text: g.files['entregas/joao.json'].text, sha: 'x1' };
+        const r3 = await syncPull(); eq(r3.report.find((x) => x.id === 'pedro').estado, 'erro'); ok(!ST.riders.pedro);
+      });
+    });
+    await T('conexão: arquivo adulterado na nuvem é recusado pela integridade', async () => {
+      await withGh(async (g) => {
+        DB.shifts = [mkShift('2026-10-06', 15, [15, 0], [23, 0], [[16, 0, 'A1', '111', 1000]])];
+        await syncPush();
+        const o = JSON.parse(g.files['entregas/joao.json'].text); o.turnos[0].entregas[0].valor = 99999; g.files['entregas/joao.json'] = { text: JSON.stringify(o), sha: 'z' };
+        const r = await syncPull(); eq(r.report.find((x) => x.id === 'joao').estado, 'erro'); ok(!ST.riders.joao);
+      });
+    });
+    await T('conexão: sem internet e chave inválida geram avisos claros, sem travar', async () => {
+      await withGh(async (g) => {
+        DB.shifts = [mkShift('2026-10-06', 15, [15, 0], [23, 0], [[16, 0, 'A1', '111', 1000]])];
+        g.offline = true; eq(await syncPush(), false); ok(/Sem internet/.test(SYNC.state.err), SYNC.state.err);
+        await syncPull(); ok(/Sem internet/.test(PULL.err));
+        g.offline = false; g.token = 'github_pat_OUTRA00000000000000000'; eq(await syncPush(), false); ok(/token/.test(SYNC.state.err), SYNC.state.err);
+        await rejects(() => ghCheck(SYNC.cfg), /token/);
+        g.token = TOKEN; eq(await syncPush(), true); eq(SYNC.state.err, null);
+      });
+    });
+    await T('conexão: sem escolher quem é, ou sem conexão, não envia nada', async () => {
+      await withGh(async (g) => {
+        DB.user = { name: 'Fulano', id: null, goal: 60 }; DB.shifts = [mkShift('2026-10-06', 15, [15, 0], [23, 0], [])];
+        eq(await syncPush(), false); eq(g.puts, 0);
+        DB.user = { name: 'João', id: 'joao', goal: 60 }; SYNC.cfg = null; eq(await syncPush(), false); eq(g.puts, 0);
+      });
+    });
+    await T('esquecida: aparece como lançada depois no painel, com a hora do registro, e dá para filtrar', async () => {
+      const sh = mkShift('2026-10-06', 15, [15, 3], [23, 20], [[16, 5, 'C1', '241', 5290], [17, 0, 'B2', '12', 2000, { late: true, regAt: localToMs('2026-10-06', 17, 40) }]]);
+      await load('bruno', [sh]);
+      const l = allDeliveries().filter((d) => d.rid === 'bruno'); eq(l.map((d) => [d.apto, d.tardia, d.registradaEm]), [['241', false, null], ['12', true, localToMs('2026-10-06', 17, 40)]]);
+      eq(queryDeliveries({ status: 'tardia' }).map((d) => d.apto), ['12']); eq(fmtLag(40 * MIN), '40 min'); eq(fmtLag(65 * MIN), '1h05');
+      near(aggregate(compute().shifts).postedPct, 0.5, 1e-9);
+      const host = document.createElement('div'); document.body.appendChild(host);
+      try { MG.tab = 'ind'; MG.rider = 'bruno'; MG.period = 'tudo'; renderInd(host); ok(host.innerHTML.includes('lançadas depois')); } finally { host.remove(); MG.period = '30'; }
+    });
+
     /* ---- apresentação ---- */
     await T('telas: renderizam com dados, sem dados e com poucos dados', async () => {
       const host = document.createElement('div'); host.id = 'view'; host.className = 'hide'; document.body.appendChild(host);
@@ -1910,7 +2317,8 @@ async function runMgrTests() {
       } finally { host.remove(); MG.period = '30'; }
     });
   } finally {
-    ST = saved.ST; MPERSIST = saved.MPERSIST; fixedNow = saved.fixedNow; MC = saved.MC;
+    ST = saved.ST; MPERSIST = saved.MPERSIST; fixedNow = saved.fixedNow; MC = saved.MC; DB = saved.DB; persist = saved.persist;
+    SYNC.cfg = saved.cfg; SYNC.fetch = saved.fetch; SYNC.off = saved.off; ETAGS = saved.etags; Object.assign(SYNC.state, saved.state); Object.assign(PULL, saved.pull);
   }
   return results;
 }
