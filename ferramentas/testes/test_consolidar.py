@@ -211,3 +211,14 @@ def test_exemplo_tem_entregas_lancadas_depois_com_registro_posterior():
     p = c.ler_pacotes(exemplo("kaua"))[0]
     tardias = [d for t in p.turnos for d in t["entregas"] if d["tardia"]]
     assert tardias and all(d["registradaEm"] > d["t"] for d in tardias)
+
+
+def test_entrada_recuada_e_preservada_so_se_for_posterior_a_entrada():
+    obj = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    t = obj["turnos"][0]
+    t["entradaOriginal"] = t["entrada"] + 90 * 60000
+    assert c.ler_pacotes(com_integridade(obj))[0].turnos[0]["entradaOriginal"] == t["entrada"] + 90 * 60000
+    t["entradaOriginal"] = t["entrada"] - 1                      # não faz sentido: ignorada
+    assert c.ler_pacotes(com_integridade(obj))[0].turnos[0]["entradaOriginal"] is None
+    del t["entradaOriginal"]                                      # arquivo antigo, sem o campo
+    assert c.ler_pacotes(com_integridade(obj))[0].turnos[0]["entradaOriginal"] is None

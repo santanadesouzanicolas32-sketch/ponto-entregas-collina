@@ -1,7 +1,7 @@
 /* Arquivo de fechamento enviado ao gerente (formato v2). */
 function exportShifts(db) {
   return [...db.shifts].sort((a, b) => a.start - b.start).map((s) => ({
-    id: s.id, data: s.date, preset: s.preset, previstoIni: s.sched, previstoFim: s.plannedEnd, entrada: s.start, saida: s.end ?? null,
+    id: s.id, data: s.date, preset: s.preset, previstoIni: s.sched, previstoFim: s.plannedEnd, entrada: s.start, entradaOriginal: s.startOrig ?? null, saida: s.end ?? null,
     saidaAutomatica: s.closeReason === 'auto', pausas: s.breaks.map((b) => ({ i: b.s, f: b.e ?? null })),
     entregas: s.deliveries.map((d) => ({
       id: d.id, t: d.t, bloco: d.block, apto: d.apt, andar: d.floor, valor: d.v ?? null, origem: d.source, conferir: !!d.review,

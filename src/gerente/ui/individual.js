@@ -45,7 +45,7 @@ function renderInd(el) {
       <div class="kv"><span>Entregas lançadas depois (esquecidas)</span><span>${pc(A.postedPct)}</span></div><div class="kv"><span>Entregas corrigidas depois</span><span>${pc(A.editedPct)}</span></div><div class="kv"><span>Entregas excluídas</span><span>${pc(A.deletedPct)}</span></div>
       <div class="kv"><span>Saídas esquecidas (fechadas automaticamente)</span><span>${A.auto}</span></div></div></div>
     <div class="card"><h2>Turnos · toque para ver os registros</h2><div class="scroll"><table class="mtable"><tr><th>Dia</th><th>Entrada</th><th>Saída</th><th>Líquido</th><th>Entr.</th><th>Entr./h</th><th>Vendido</th><th>Obs.</th></tr>
-      ${ordered.slice(0, 60).map((s) => { const sv = s.live.reduce((a, d) => a + (d.valor || 0), 0), ph = s.sm.net >= 1800 ? s.live.length / (s.sm.net / 3600) : null; return `<tr data-act="m-shift" data-r="${s.rid}" data-s="${esc(s.id)}"><td>${ymdToDm(s.data)}</td><td>${fmtTime(s.entrada)}</td><td>${s.saida ? fmtTime(s.saida) : '<span class="gold">aberto</span>'}</td><td>${dur(s.sm.net)}</td><td>${s.live.length}</td><td>${num(ph)}</td><td>${brl(sv)}</td><td>${[s.sm.lateS ? 'atraso ' + dur(s.sm.lateS) : '', s.sm.over ? 'extra ' + dur(s.sm.over) : '', s.auto ? 'saída automática' : '', s.ex ? 'EXEMPLO' : ''].filter(Boolean).join(', ') || '—'}</td></tr>`; }).join('')}</table></div></div>`}`;
+      ${ordered.slice(0, 60).map((s) => { const sv = s.live.reduce((a, d) => a + (d.valor || 0), 0), ph = s.sm.net >= 1800 ? s.live.length / (s.sm.net / 3600) : null; return `<tr data-act="m-shift" data-r="${s.rid}" data-s="${esc(s.id)}"><td>${ymdToDm(s.data)}</td><td>${fmtTime(s.entrada)}</td><td>${s.saida ? fmtTime(s.saida) : '<span class="gold">aberto</span>'}</td><td>${dur(s.sm.net)}</td><td>${s.live.length}</td><td>${num(ph)}</td><td>${brl(sv)}</td><td>${[s.sm.lateS ? 'atraso ' + dur(s.sm.lateS) : '', s.sm.over ? 'extra ' + dur(s.sm.over) : '', s.entradaOriginal ? 'entrada recuada' : '', s.auto ? 'saída automática' : '', s.ex ? 'EXEMPLO' : ''].filter(Boolean).join(', ') || '—'}</td></tr>`; }).join('')}</table></div></div>`}`;
 }
 
 actions['m-shift'] = (el) => {
@@ -54,6 +54,7 @@ actions['m-shift'] = (el) => {
   const ds = [...s.dels].sort((a, b) => a.t - b.t);
   sheet(`<h3>${rlabel(s.rid)} · ${ymdToDm(s.data)}</h3>
     <div class="kvlist"><div class="kv"><span>Previsto</span><span>${fmtTime(s.previstoIni)} – ${fmtTime(s.previstoFim)}</span></div><div class="kv"><span>Entrada registrada</span><span>${fmtTime(s.entrada)}</span></div>
+      ${s.entradaOriginal ? `<div class="kv"><span>Entrada ajustada</span><span>batida às ${fmtTime(s.entradaOriginal)}, recuada para ${fmtTime(s.entrada)} por entrega lançada depois</span></div>` : ''}
       <div class="kv"><span>Saída registrada</span><span>${s.saida ? fmtTime(s.saida) + (s.auto ? ' (automática)' : '') : 'não bateu'}</span></div>
       <div class="kv"><span>Pausas</span><span>${s.pausas.length ? s.pausas.map((p) => `${fmtTime(p.i)}–${p.f ? fmtTime(p.f) : '…'}`).join(' · ') : 'nenhuma'}</span></div>
       <div class="kv"><span>Horas líquidas</span><span>${dur(s.sm.net)}</span></div></div>

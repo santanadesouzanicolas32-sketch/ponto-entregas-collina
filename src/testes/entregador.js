@@ -341,6 +341,16 @@ function runSelfTests() {
       const r = parseComanda('Pedido 123456 CEP 78000-000 Tel 65999991234 BLOCO B1'); eq([r.block, r.apt], ['B1', null]);
     });
 
+    T('esquecida: antes da entrada é aceita; a entrada do turno recua e a original fica guardada', () => {
+      clock(at(2026, 10, 6, 19, 19)); startShift(15, { anyway: true }); const s = openShift(); eq(s.start, at(2026, 10, 6, 19, 19));
+      addDelivery('A1', '121', { at: at(2026, 10, 6, 17, 30), late: true });
+      eq([s.start, s.startOrig], [at(2026, 10, 6, 17, 30), at(2026, 10, 6, 19, 19)]);
+      addDelivery('B1', '131', { at: at(2026, 10, 6, 16, 10), late: true }); eq([s.start, s.startOrig], [at(2026, 10, 6, 16, 10), at(2026, 10, 6, 19, 19)], 'recua de novo e mantém a PRIMEIRA entrada batida');
+      addDelivery('C1', '141', { at: at(2026, 10, 6, 18, 0), late: true }); eq(s.start, at(2026, 10, 6, 16, 10), 'depois da entrada: não mexe');
+      const ex = exportShifts(DB)[0]; eq([ex.entrada, ex.entradaOriginal], [at(2026, 10, 6, 16, 10), at(2026, 10, 6, 19, 19)]);
+      const back = sanitizeDb(JSON.parse(JSON.stringify(DB))).shifts[0]; eq([back.start, back.startOrig], [s.start, s.startOrig]);
+      eq(summarize(s, now()).gross, 3 * 3600 + 9 * 60, 'as horas contam desde a entrega mais antiga');
+    });
     T('esquecida: no máximo 10 por turno (excluídas também contam, para não burlar o limite)', () => {
       startShift(15); clock(at(2026, 10, 6, 20, 0));
       for (let i = 0; i < CFG.maxLate; i++) addDelivery('A1', `${i + 11}1`, { at: at(2026, 10, 6, 16, i), late: true });
@@ -373,7 +383,7 @@ function runSelfTests() {
     T('esquecida: horário antes da entrada, no futuro, em pausa ou sem horário é recusado', () => {
       startShift(15);
       clock(at(2026, 10, 6, 16, 0)); startBreak(); clock(at(2026, 10, 6, 16, 20)); endBreak(); clock(at(2026, 10, 6, 18, 0));
-      throwsCode(() => addDelivery('A1', '121', { at: at(2026, 10, 6, 14, 0), late: true }), 'CAPTURE_BEFORE_SHIFT');
+      throwsCode(() => addDelivery('A1', '121', { at: at(2026, 10, 6, 13, 0), late: true }), 'BEFORE_WINDOW');          // antes de 1 h antes do início previsto (14:00)
       throwsCode(() => addDelivery('A1', '121', { at: at(2026, 10, 6, 19, 0), late: true }), 'FUTURE_TIME');
       throwsCode(() => addDelivery('A1', '121', { at: at(2026, 10, 6, 16, 10), late: true }), 'IN_BREAK');
       throwsCode(() => addDelivery('A1', '121', { late: true }), 'INVALID_TIME');

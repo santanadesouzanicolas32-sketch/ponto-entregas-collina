@@ -51,6 +51,8 @@ function dataQuality() {
     for (const s of turnos) byDate[s.data] = (byDate[s.data] || 0) + 1;
     const dup = Object.entries(byDate).filter(([, n]) => n > 1).map(([d]) => ymdToDm(d));
     if (dup.length) items.push({ level: 'warn', text: `${r.nome}: mais de um turno no mesmo dia (${dup.slice(0, 5).join(', ')}). Pode ser outro aparelho; use "Ignorar" no turno que sobrar.` });
+    const recuadas = turnos.filter((s) => s.entradaOriginal).length;
+    if (recuadas) items.push({ level: 'info', text: `${r.nome}: ${recuadas} turno(s) com a entrada recuada por entrega lançada depois (a entrada batida está na ficha do turno).` });
     const open = turnos.filter((s) => s.saida == null).length;
     if (open) items.push({ level: 'info', text: `${r.nome}: ${open} turno(s) sem saída batida.` });
     const mine = shifts.filter((s) => s.rid === r.id), n = mine.reduce((a, s) => a + s.live.length, 0), late = mine.reduce((a, s) => a + s.live.filter((d) => d.tardia).length, 0);

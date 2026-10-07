@@ -18,7 +18,7 @@ function deliverySheet({ title, block = null, apt = '', at = null, source = 'man
     ${canLate ? `<div class="chips" id="whenSeg" style="margin-bottom:6px"><button type="button" class="chip ${lateAt ? '' : 'on'}" data-w="now">Agora</button><button type="button" class="chip ${lateAt ? 'on' : ''}" data-w="late">Esqueci de registrar</button></div>
     <div id="whenBox" class="${lateAt ? '' : 'hide'}"><label for="atTime">Horário em que entregou</label>
     <input id="atTime" type="time" value="${lateAt ? esc(fmtTime(lateAt)) : ''}">
-    <p class="mut lockp" style="margin:6px 0 0">Entra na ordem do horário e fica marcada como “lançada depois”. Depois de salvar, o horário não muda.</p></div>` : ''}
+    <p class="mut lockp" style="margin:6px 0 0">Entra na ordem do horário e fica marcada como “lançada depois”. Se for antes da sua entrada, a entrada do turno passa para esse horário. Depois de salvar, o horário não muda.</p></div>` : ''}
     ${note ? `<div class="ocr-note ${note.startsWith('!') ? 'warn' : ''}">${esc(note.replace(/^!/, ''))}</div>` : ''}
     <label>Bloco</label>
     <div class="chips" id="chips">${CFG.blocks.map((b) => `<button type="button" class="chip ${chosen === b ? 'on' : ''}" data-b="${b}">${b}</button>`).join('')}</div>

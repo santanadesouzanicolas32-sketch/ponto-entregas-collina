@@ -236,6 +236,14 @@ async function runMgrTests() {
       ok(t.includes('Pedro: dados só até') && t.includes('Joao') === false && t.includes('João: nenhum arquivo') && t.includes('Bruno: mais de um turno no mesmo dia'), t);
     });
 
+    await T('entrada recuada por entrega esquecida: chega ao painel com a entrada batida de verdade', async () => {
+      const sh = mkShift('2026-10-06', 15, [16, 10], [23, 0], [[16, 20, 'A1', '241', 1000]]); sh.startOrig = at('2026-10-06', 19, 19);
+      await load('bruno', [sh]); const s = compute().shifts[0]; eq([s.entrada, s.entradaOriginal], [at('2026-10-06', 16, 10), at('2026-10-06', 19, 19)]);
+      ok(dataQuality().some((i) => i.text.includes('entrada recuada')));
+      actions['m-shift']({ dataset: { r: 'bruno', s: sh.id } }); try { ok($('sheet').textContent.includes('Entrada ajustada') && $('sheet').textContent.includes('19:19')); } finally { closeSheet(); }
+      const pre = mkShift('2026-10-05', 15, [15, 0], [23, 0], [[16, 0, 'A1', '241', 1000]]); await load('joao', [pre]); eq(compute().shifts.find((x) => x.rid === 'joao').entradaOriginal, null);
+    });
+
     /* ---- turnos ignorados ---- */
     await T('ignorar turno: sai das análises, consultas e do consolidado, e volta ao restaurar', async () => {
       await load('bruno', [mkShift('2026-10-05', 15, [15, 0], [23, 0], spread(15, 6)), mkShift('2026-10-06', 15, [15, 0], [23, 0], spread(15, 4))]);

@@ -11,7 +11,7 @@ function cleanShifts(raw, riderId) {
     if (!s || !isNum(s.entrada) || !isNum(s.previstoIni) || !isNum(s.previstoFim) || !/^\d{4}-\d{2}-\d{2}$/.test(String(s.data)) || s.previstoFim <= s.previstoIni
       || (s.saida != null && (!isNum(s.saida) || s.saida <= s.entrada))) { droppedShifts++; continue; }
     const sh = { id: str(s.id, 64) || `${riderId}-${s.data}-${s.entrada}`, data: s.data, preset: s.preset === 16 ? 16 : 15, previstoIni: s.previstoIni, previstoFim: s.previstoFim,
-      entrada: s.entrada, saida: s.saida ?? null, saidaAutomatica: !!s.saidaAutomatica, pausas: [], entregas: [] };
+      entrada: s.entrada, entradaOriginal: isNum(s.entradaOriginal) && s.entradaOriginal > s.entrada ? s.entradaOriginal : null, saida: s.saida ?? null, saidaAutomatica: !!s.saidaAutomatica, pausas: [], entregas: [] };
     for (const p of Array.isArray(s.pausas) ? s.pausas : []) if (p && isNum(p.i) && (p.f == null || (isNum(p.f) && p.f > p.i))) sh.pausas.push({ i: p.i, f: p.f ?? null });
     for (const d of Array.isArray(s.entregas) ? s.entregas : []) {
       try {

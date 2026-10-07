@@ -119,7 +119,7 @@ def limpar_turnos(brutos: Any, entregador: str) -> tuple[list[dict], int, int]:
             except (ValueError, KeyError):
                 descartadas += 1
         saida.append({"id": str(s.get("id") or f"{entregador}-{s['data']}-{s['entrada']}")[:64], "data": s["data"], "preset": 16 if s.get("preset") == 16 else 15,
-                      "previstoIni": s["previstoIni"], "previstoFim": s["previstoFim"], "entrada": s["entrada"], "saida": s.get("saida"),
+                      "previstoIni": s["previstoIni"], "previstoFim": s["previstoFim"], "entrada": s["entrada"], "entradaOriginal": s.get("entradaOriginal") if _num(s.get("entradaOriginal")) and s.get("entradaOriginal") > s["entrada"] else None, "saida": s.get("saida"),
                       "saidaAutomatica": bool(s.get("saidaAutomatica")), "pausas": pausas, "entregas": entregas})
     return saida, descartadas, turnos_desc
 
@@ -272,7 +272,7 @@ def gerar_exemplo(entregador: str, fim: date, dias: int, semente: int = 7) -> di
                 e["excluida"], e["excluidaEm"] = True, t + 120000
             entregas.append(e)
             k += 1
-        turnos.append({"id": f"{entregador}-{dia}", "data": dia.isoformat(), "preset": preset, "previstoIni": previsto_ini, "previstoFim": previsto_fim, "entrada": entrada, "saida": saida,
+        turnos.append({"id": f"{entregador}-{dia}", "data": dia.isoformat(), "preset": preset, "previstoIni": previsto_ini, "previstoFim": previsto_fim, "entrada": entrada, "entradaOriginal": None, "saida": saida,
                        "saidaAutomatica": False, "pausas": pausas, "entregas": entregas})
     return {"formato": FORMATO, "versao": 2, "exemplo": True, "entregador": {"id": entregador, "nome": EQUIPE[entregador]},
             "exportadoEm": ms(fim, 8), "turnos": turnos, "integridade": codigo_integridade(entregador, turnos)}

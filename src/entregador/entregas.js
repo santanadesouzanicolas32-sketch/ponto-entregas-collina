@@ -15,9 +15,10 @@ function addDelivery(blockRaw, aptRaw, { force = false, at = null, source = 'man
   const block = normalizeBlock(blockRaw), a = normalizeApt(aptRaw);
   const t = at ?? now();
   if (late && at == null) throw new AppErr('INVALID_TIME', 'Informe o horário da entrega.');
-  if (t < s.start) throw new AppErr('CAPTURE_BEFORE_SHIFT', late ? `Esse horário é antes da sua entrada (${fmtTime(s.start)}).` : 'A foto foi tirada antes da entrada do turno.');
+  if (t < s.start && !late) throw new AppErr('CAPTURE_BEFORE_SHIFT', 'A foto foi tirada antes da entrada do turno.');
   if (t > now() + 5000) throw new AppErr('FUTURE_TIME', 'Horário no futuro.');
   if (late) {
+    if (t < s.start && t < s.sched - CFG.early) throw new AppErr('BEFORE_WINDOW', `Esse horário é antes do início possível deste turno (${fmtTime(s.sched - CFG.early)}).`);
     if (s.end != null && t > s.end) throw new AppErr('AFTER_SHIFT', `Esse horário é depois da sua saída (${fmtTime(s.end)}).`);
     const br = s.breaks.find((b) => t >= b.s && t < (b.e ?? now()));
     if (br) throw new AppErr('IN_BREAK', `Nesse horário você estava em pausa (${fmtTime(br.s)}–${br.e ? fmtTime(br.e) : 'agora'}).`);
@@ -35,6 +36,7 @@ function addDelivery(blockRaw, aptRaw, { force = false, at = null, source = 'man
   const d = { id: uid(), t, block, apt: a.apt, floor: a.floor, review: !!review, source, del: false, v: value };
   if (requestId) d.rid = requestId;
   if (late) { d.late = true; d.regAt = now(); }
+  if (late && t < s.start) { s.startOrig ??= s.start; s.start = t; }       // esqueceu até de bater a entrada: o turno passa a começar na entrega mais antiga
   s.deliveries.push(d);
   s.deliveries.sort((p, q) => p.t - q.t);     // volta para a ordem do horário
   save();

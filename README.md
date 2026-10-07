@@ -32,6 +32,8 @@ Em qualquer caminho, cada arquivo leva um código de integridade (SHA-256): se o
 - **Foto da comanda** lê bloco, apartamento e valor no próprio aparelho; **+ Manual** registra sem foto.
 - **Entrega esquecida:** em **+ Manual → Esqueci de registrar**, informe o horário em que entregou. Ela volta para a ordem do horário,
   fica marcada com **DEPOIS** e o gerente vê a hora em que foi realmente registrada. Máximo de 10 por turno.
+  Pode ser até antes da entrada batida (a partir de 1 h antes do início previsto): a entrada do turno recua para esse horário e o
+  gerente vê, na ficha do turno, a entrada que foi realmente batida.
 - **Nome:** escolhido na primeira vez; depois de registrar turnos ele não pode ser trocado (evita misturar dados de duas pessoas).
 
 ## O que o gerente enxerga

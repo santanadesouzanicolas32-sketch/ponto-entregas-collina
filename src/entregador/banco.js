@@ -26,6 +26,7 @@ function sanitizeDb(d) {
       id: str(s.id, 64) || uid(), date: s.date, preset: s.preset === 16 ? 16 : 15, sched: s.sched, plannedEnd: s.plannedEnd,
       start: s.start, end: s.end ?? null, closeReason: s.closeReason === 'auto' ? 'auto' : null, breaks: [], deliveries: [],
     };
+    if (isNum(s.startOrig) && s.startOrig > s.start) sh.startOrig = s.startOrig;
     for (const b of Array.isArray(s.breaks) ? s.breaks : []) {
       if (isNum(b?.s) && (b.e == null || (isNum(b.e) && b.e > b.s))) sh.breaks.push({ s: b.s, e: b.e ?? null });
     }

@@ -28,7 +28,7 @@ function compute() {
       const core = { start: s.entrada, end: s.saida, sched: s.previstoIni, plannedEnd: s.previstoFim, breaks: s.pausas.map((p) => ({ s: p.i, e: p.f })) };
       const sm = summarize(core, nowRef);
       const dels = s.entregas.map((e) => ({ ...e, rid: r.id, sid: s.id, data: s.data }));
-      const sh = { rid: r.id, id: s.id, data: s.data, preset: s.preset, previstoIni: s.previstoIni, previstoFim: s.previstoFim, entrada: s.entrada, saida: s.saida, auto: s.saidaAutomatica,
+      const sh = { rid: r.id, id: s.id, data: s.data, preset: s.preset, previstoIni: s.previstoIni, previstoFim: s.previstoFim, entrada: s.entrada, entradaOriginal: s.entradaOriginal ?? null, saida: s.saida, auto: s.saidaAutomatica,
         pausas: s.pausas, nowRef, sm, ex: !!s._ex, dels, live: dels.filter((d) => !d.excluida) };
       const nb = netByHour(sh); sh.byHour = nb.hours; sh.byCell = nb.cells;
       shifts.push(sh);
