@@ -21,7 +21,7 @@ function askIdentity() {
     <div class="chips" id="idChips">${ROSTER.map((r) => `<button type="button" class="chip" data-r="${r.id}">${esc(r.nome)}</button>`).join('')}</div>`);
   $('idChips').addEventListener('click', (e) => {
     const c = e.target.closest('.chip'); if (!c) return;
-    const r = riderById(c.dataset.r); DB.user = { ...DB.user, name: r.nome, id: r.id }; save(); closeSheet(); render(); toast(`Olá, ${r.nome}`, 4500);
+    const r = riderById(c.dataset.r); DB.user = { ...DB.user, name: r.nome, id: r.id }; const n = applyLancamentos(); save(); closeSheet(); render(); toast(n ? `Olá, ${r.nome}. ${n} entrega(s) lançada(s) no seu histórico` : `Olá, ${r.nome}`, 4500);
   });
 }
 

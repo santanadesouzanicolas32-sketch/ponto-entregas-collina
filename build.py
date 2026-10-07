@@ -31,7 +31,7 @@ COMPARTILHADO = [
     'compartilhado/nuvem.js', 'compartilhado/interface.js',
 ]
 ENTREGADOR = [
-    'entregador/banco.js', 'entregador/turno.js', 'entregador/entregas.js', 'entregador/visao.js', 'entregador/relatorios.js',
+    'entregador/banco.js', 'entregador/turno.js', 'entregador/entregas.js', 'entregador/lancamentos.js', 'entregador/visao.js', 'entregador/relatorios.js',
     'entregador/fechamento.js', 'entregador/envio.js', 'entregador/comanda.js',
     'entregador/ui/navegacao.js', 'entregador/ui/turno.js', 'entregador/ui/registro.js', 'entregador/ui/ocr.js',
     'entregador/ui/historico.js', 'entregador/ui/ajustes.js', 'entregador/ui/inicio.js', 'entregador/ui/painel.js',

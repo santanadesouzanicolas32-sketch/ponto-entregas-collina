@@ -6,7 +6,9 @@ $('suform').addEventListener('submit', (e) => {
   if (!rider) return ($('suerr').textContent = 'Escolha o seu nome na lista.');
   if (!Number.isInteger(goal) || goal < 1 || goal > 1000) return ($('suerr').textContent = 'A meta precisa ser um número de 1 a 1000.');
   DB.user = { name: rider.nome, id: rider.id, goal };
+  const n = applyLancamentos();
   save(); enterApp();
+  if (n) toast(`${n} entrega(s) lançada(s) no seu histórico`, 5000);
 });
 function showOnly(id) { for (const x of ['setup', 'app']) $(x).classList.toggle('hide', x !== id); }
 function enterApp() { showOnly('app'); buildNav(); render(); }
@@ -41,8 +43,10 @@ function boot() {
   document.addEventListener('visibilitychange', () => { if (document.hidden) syncPush(); else syncSoon(1500); });
   setInterval(() => { if (!document.hidden && openShift()) syncSoon(500); }, 5 * 60000);    // turno aberto: renova a hora do envio
   if (DB.user) {
+    const n = applyLancamentos();
     enterApp();
     if (!DB.user.id) askIdentity();
+    else if (n) toast(`${n} entrega(s) lançada(s) no seu histórico`, 5000);
     if (linked) toast('Conectado ao gerente: seus registros vão sozinhos', 5000);
     syncSoon(1500);
   } else showOnly('setup');

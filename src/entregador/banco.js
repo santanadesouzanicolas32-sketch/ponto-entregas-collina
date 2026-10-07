@@ -1,7 +1,7 @@
 /* Banco do aparelho do entregador (localStorage): validação, leitura e gravação. */
 /* ---------------- armazenamento ---------------- */
 const KEY = 'ponto-collina:v1';
-const emptyDb = () => ({ v: 1, user: null, shifts: [], prefs: { autoPhoto: true } });
+const emptyDb = () => ({ v: 1, user: null, shifts: [], prefs: { autoPhoto: true }, imported: [] });
 let DB = emptyDb();
 let persist = true;                         // desligado nos autotestes
 let storageOk = true;
@@ -19,6 +19,7 @@ function sanitizeDb(d) {
     out.user = { name: r ? r.nome : nm, id: r ? r.id : null, goal: Number.isInteger(goal) && goal >= 1 && goal <= 1000 ? goal : 60 };
   }
   out.prefs.autoPhoto = d.prefs?.autoPhoto !== false;
+  out.imported = (Array.isArray(d.imported) ? d.imported : []).filter((x) => typeof x === 'string').slice(0, 50).map((x) => x.slice(0, 64));
   for (const s of d.shifts) {
     if (!s || s.test || s.demo || !isNum(s.start) || !isNum(s.sched) || !isNum(s.plannedEnd) || !/^\d{4}-\d{2}-\d{2}$/.test(String(s.date))) continue;
     if (s.plannedEnd <= s.sched || (s.end != null && (!isNum(s.end) || s.end <= s.start))) continue;

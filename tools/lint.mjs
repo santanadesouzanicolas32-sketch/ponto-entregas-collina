@@ -52,7 +52,7 @@ const ESTADO = ['DB', 'ST', 'SYNC', 'PULL'];
 const camadas = [
   { nome: 'domínio (regras puras)', arquivos: ['compartilhado/equipe.js', 'compartilhado/tempo.js', 'compartilhado/formato.js', 'compartilhado/pedido.js', 'compartilhado/jornada.js', 'compartilhado/csv.js', 'compartilhado/integridade.js', 'entregador/comanda.js'],
     proibidos: [...DOM, ...TELA, ...ARMAZENAMENTO, ...ESTADO, 'navigator'] },
-  { nome: 'dados (sem tela)', arquivos: ['compartilhado/nuvem.js', 'entregador/banco.js', 'entregador/turno.js', 'entregador/entregas.js', 'entregador/visao.js', 'entregador/relatorios.js', 'entregador/fechamento.js', 'entregador/envio.js', 'gerente/dados/armazenamento.js', 'gerente/dados/importacao.js', 'gerente/dados/calculo.js', 'gerente/dados/metricas.js', 'gerente/dados/consulta.js', 'gerente/nuvem.js'],
+  { nome: 'dados (sem tela)', arquivos: ['compartilhado/nuvem.js', 'entregador/banco.js', 'entregador/turno.js', 'entregador/entregas.js', 'entregador/lancamentos.js', 'entregador/visao.js', 'entregador/relatorios.js', 'entregador/fechamento.js', 'entregador/envio.js', 'gerente/dados/armazenamento.js', 'gerente/dados/importacao.js', 'gerente/dados/calculo.js', 'gerente/dados/metricas.js', 'gerente/dados/consulta.js', 'gerente/nuvem.js'],
     proibidos: [...DOM.filter((x) => x !== 'location'), ...TELA] },
   { nome: 'tela (sem acesso direto a armazenamento)', arquivos: [...new Set(Object.values(manifesto.paginas).flatMap((p) => p.arquivos))].filter((f) => /\/ui\/|interface\.js|dom\.js/.test(f)),
     proibidos: [...ARMAZENAMENTO] },

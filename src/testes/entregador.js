@@ -276,7 +276,27 @@ function runSelfTests() {
     T('dados antigos de teste/exemplo são descartados ao carregar', () => {
       const mk = (id, extra) => ({ id, date: '2026-10-0' + id, preset: 15, sched: 1, plannedEnd: 5, start: 2, end: 4, breaks: [], deliveries: [{ t: 3, block: 'A1', apt: '241' }], ...extra });
       const c = sanitizeDb({ shifts: [mk('1', {}), mk('2', { test: true }), mk('3', { demo: true })] }); eq(c.shifts.map((s) => s.id), ['1']);
-      eq(Object.keys(c).sort(), ['prefs', 'shifts', 'user', 'v'], 'sem registro de alterações');
+      eq(Object.keys(c).sort(), ['imported', 'prefs', 'shifts', 'user', 'v'], 'sem registro de alterações');
+    });
+    const LOTE = [['15:22', 'C2', '273', 1908], ['15:39', 'C1', '12', 1166], ['16:40', 'A1', '82', 1178], ['18:02', 'C2', '71', 957], ['18:19', 'B1', '122', 1190], ['18:44', 'C1', '273', 975], ['18:46', 'C2', '214', 1580]];
+    T('lançamento do Nicolas: cria o turno do dia com as 7 entregas, na ordem, com bloco, apartamento, valor e hora certos', () => {
+      clock(at(2026, 10, 7, 19, 30)); eq(applyLancamentos(), 7);
+      const s = DB.shifts.find((x) => x.date === '2026-10-07'); ok(s, 'turno de 07/10'); eq(s.start, localToMs('2026-10-07', 15, 22));
+      eq(s.deliveries.map((d) => [fmtTime(d.t), d.block, d.apt, d.v]), LOTE); eq(s.deliveries.map((d) => d.floor), [27, 1, 8, 7, 12, 27, 21]);
+      ok(s.deliveries.every((d) => d.late && d.regAt === at(2026, 10, 7, 19, 30)), 'marcadas como lançadas depois, com a hora do registro');
+      eq(DB.imported, ['lanc-2026-10-07-b']); eq(applyLancamentos(), 0, 'não reaplica'); eq(s.deliveries.length, 7);
+    });
+    T('lançamento do Nicolas: entra no turno aberto sem duplicar o que já foi registrado e não volta depois de excluir', () => {
+      clock(at(2026, 10, 7, 15, 3)); startShift(15); clock(at(2026, 10, 7, 15, 40)); addDelivery('C1', '12', { value: 1166 });
+      clock(at(2026, 10, 7, 19, 30)); eq(applyLancamentos(), 6, 'a C1 12 já existia'); eq(DB.shifts.length, 1); eq(openShift().deliveries.length, 7);
+      deleteDelivery(openShift().deliveries.find((x) => x.apt === '214').id); eq(applyLancamentos(), 0); eq(liveDeliveries(openShift()).length, 6, 'excluída continua excluída');
+    });
+    T('lançamento do Nicolas: só vale para o Nicolas e o controle de lotes sobrevive ao backup', () => {
+      DB.user = { name: 'Pedro', id: 'pedro', goal: 60 }; eq(applyLancamentos(), 0); eq(DB.shifts.length, 0); eq(DB.imported, []);
+      DB.user = { name: 'Nicolas', id: 'nicolas', goal: 60 }; applyLancamentos(); const c = sanitizeDb(JSON.parse(JSON.stringify(DB))); eq(c.imported, ['lanc-2026-10-07-b']); eq(sanitizeDb({ shifts: [], imported: [5, 'x'] }).imported, ['x']);
+    });
+    T('painel do aplicativo: o lançamento do Nicolas conta nos totais', () => {
+      clock(at(2026, 10, 7, 19, 30)); applyLancamentos(); biReset('tudo'); const all = biRows(), R = biRange('tudo', all), K = biKpis(biApply(all, R), R); eq([K.n, K.sales], [7, 8954]);
     });
     T('painel: indicadores, comparação e cobertura de valor', () => {
       biFixture(); biReset(); const all = biRows(); eq(all.length, 7);
