@@ -270,6 +270,57 @@ textarea:focus{outline:2px solid var(--gold)}
 #selftest .kv span:last-child{text-align:right;word-break:break-word}
 .offline.hide{display:none}
 #storageWarn{top:0}
+/* ---- valor, painel estilo Power BI ---- */
+.chk{display:flex;gap:10px;align-items:flex-start;margin:14px 0 0;font-size:13px;color:var(--txt);cursor:pointer}
+.chk input{width:20px;height:20px;margin-top:1px;flex:none}
+.amt{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums}
+.toast.act{pointer-events:auto;display:flex;gap:12px;align-items:center}
+.toast-btn{background:#1a0f0a;color:var(--gold2);border:0;border-radius:99px;padding:6px 12px;font-weight:800;cursor:pointer}
+.bi-filters{position:sticky;top:calc(62px + env(safe-area-inset-top,0px));z-index:12;background:var(--bg);padding:10px 0 4px;margin:-6px 0 4px}
+.bi-row{display:flex;gap:6px;overflow-x:auto;padding:2px 0 6px;scrollbar-width:none;align-items:center}
+.bi-row::-webkit-scrollbar{display:none}
+.chip2{flex:none;border:1px solid var(--line);background:var(--card);color:var(--mut);border-radius:99px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer}
+.chip2.on{background:var(--gold);color:#1a0f0a;border-color:var(--gold)}
+.chip2.alt{border-style:dashed}
+.chip2.rm{background:#4d3a15;color:var(--gold2);border-color:#7a6026}
+.linkbtn{background:none;border:0;color:var(--gold2);font-weight:700;text-decoration:underline;cursor:pointer;padding:6px 4px;font-size:13px}
+.bi-range{font-size:12px;margin:2px 2px 10px}
+.bi-kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+@media(min-width:700px){.bi-kpis{grid-template-columns:repeat(3,1fr)}}
+.kpi-card{position:relative;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;overflow:hidden;min-width:0;display:flex;flex-direction:column;gap:2px}
+.kpi-card.strong{border-color:#7a6026;background:linear-gradient(180deg,#2e1b11,#22130c)}
+.kpi-card>span{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.8px;font-weight:700}
+.kpi-card b{font-family:Fraunces,Georgia,serif;font-size:24px;line-height:1.15;word-break:break-word}
+.kpi-card small{font-size:11px;color:var(--mut)}
+.kpi-card em{font-style:normal;font-size:12px;font-weight:700}
+.kpi-card em.up{color:var(--ok)}.kpi-card em.down{color:var(--bad)}
+.kpi-card .spark{position:absolute;right:8px;bottom:8px;width:44%;height:26px;color:var(--gold);opacity:.55}
+.bi-bars{position:relative;display:flex;align-items:stretch;gap:3px;height:150px;margin-top:12px;border-bottom:1px solid var(--line);background:repeating-linear-gradient(to top,transparent 0,transparent 24.5%,#ffffff0d 25%)}
+.bi-bars.thin{gap:1px}
+.bi-col{flex:1;min-width:2px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;background:none;border:0;padding:0;cursor:pointer;position:relative;height:100%}
+.bi-bar{display:block;width:100%;background:var(--gold);border-radius:3px 3px 0 0;min-height:2px;transition:height .25s}
+.bi-col.zero .bi-bar{background:var(--line)}
+.bi-col.sel .bi-bar{background:var(--gold2);outline:2px solid var(--gold2)}
+.bi-bars:has(.sel) .bi-col:not(.sel) .bi-bar{opacity:.4}
+.bi-col small{position:absolute;bottom:-18px;font-size:9px;color:var(--mut);white-space:nowrap}
+.bi-bars:has(small){margin-bottom:24px}
+.bi-goal{position:absolute;left:0;right:0;border-top:2px dashed #cfa24f99;pointer-events:none;z-index:2}
+.bi-grid{display:grid;gap:12px;grid-template-columns:1fr}
+@media(min-width:760px){.bi-grid{grid-template-columns:1fr 1fr}}
+.hrow.bi-h{width:100%;background:none;border:0;color:inherit;font:inherit;padding:6px 4px;border-radius:10px;cursor:pointer;text-align:left}
+.hrow.bi-h.sel{background:#4d3a1544;outline:1px solid #7a6026}
+.hrow .v2{min-width:70px;text-align:right;font-variant-numeric:tabular-nums;font-size:12px;color:var(--txt)}
+.heat{display:grid;grid-template-columns:36px repeat(7,1fr);gap:3px}
+.hm-h{color:var(--mut);font-size:10px;display:flex;align-items:center;justify-content:center;min-height:24px}
+.hm-c{border:0;border-radius:5px;min-height:26px;color:#1a0f0a;font-weight:700;font-size:10px;background:rgba(207,162,79,var(--a));cursor:pointer;padding:0}
+.hm-c[style*="--a:0.00"]{background:#ffffff08;color:transparent}
+.hm-c.sel{outline:2px solid var(--gold2)}
+.insight{margin:0;padding:9px 0;border-top:1px solid var(--line);font-size:14px;line-height:1.4}
+.insight:first-of-type{border-top:0}
+.insight b{color:var(--gold2)}
+.seg.mini{margin:0;padding:2px;width:auto}.seg.mini button{padding:6px 12px;font-size:12px}
+.sortable{cursor:pointer;user-select:none}
+.totrow td{border-top:2px solid var(--line);background:#ffffff06}
 
 </style>
 </head>
@@ -394,6 +445,19 @@ function mmss(sec) {
 }
 const num1 = (n) => (n == null ? '—' : String(Math.round(n * 10) / 10).replace('.', ','));
 const pct = (n) => (n == null ? '' : `${n >= 0 ? '+' : '−'}${Math.abs(Math.round(n))}%`);
+const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+const brl = (cents) => (cents == null ? '—' : BRL.format(cents / 100));
+/** "52", "52,5", "52,50", "R$ 1.234,56", "1234.56" -> centavos (inteiro). Vazio -> null. Inválido -> erro. */
+function parseMoney(text) {
+  let s = String(text ?? '').replace(/R\$/gi, '').replace(/\s+/g, '');
+  if (!s) return null;
+  if (!/^\d{1,3}(\.\d{3})*(,\d{1,2})?$|^\d+(,\d{1,2})?$|^\d+\.\d{1,2}$/.test(s)) throw new AppErr('INVALID_VALUE', 'Valor inválido. Exemplo: 52,90');
+  if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');
+  else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');   // 1.234 = mil duzentos e trinta e quatro
+  const cents = Math.round(parseFloat(s) * 100);
+  if (!Number.isFinite(cents) || cents < 0 || cents > 1000000) throw new AppErr('INVALID_VALUE', 'Valor fora do limite (até R$ 10.000,00).');
+  return cents;
+}
 const median = (a) => { if (!a.length) return null; const b = [...a].sort((x, y) => x - y), m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
 
 /* ---------------- regras de ponto (porte das regras do servidor) ---------------- */
@@ -510,7 +574,7 @@ function shiftAlerts({ sm, pace, proj, nowMs, plannedEnd, count, goal, openBreak
 
 /* ---------------- armazenamento ---------------- */
 const KEY = 'ponto-collina:v1';
-const emptyDb = () => ({ v: 1, user: null, shifts: [], audit: [], prefs: { notify: false } });
+const emptyDb = () => ({ v: 1, user: null, shifts: [], audit: [], prefs: { notify: false, autoPhoto: true } });
 let DB = emptyDb();
 let persist = true;                         // desligado nos autotestes
 let storageOk = true;
@@ -528,6 +592,7 @@ function sanitizeDb(d) {
     out.user = { name: str(d.user.name, 60).trim() || 'Entregador', goal: Number.isInteger(goal) && goal >= 1 && goal <= 1000 ? goal : 60 };
   }
   out.prefs.notify = !!d.prefs?.notify;
+  out.prefs.autoPhoto = d.prefs?.autoPhoto !== false;
   for (const s of d.shifts) {
     if (!s || !isNum(s.start) || !isNum(s.sched) || !isNum(s.plannedEnd) || !/^\d{4}-\d{2}-\d{2}$/.test(String(s.date))) continue;
     if (s.plannedEnd <= s.sched || (s.end != null && (!isNum(s.end) || s.end <= s.start))) continue;
@@ -543,7 +608,7 @@ function sanitizeDb(d) {
       if (!x || !isNum(x.t)) continue;
       try {
         const blk = normalizeBlock(x.block), a = normalizeApt(x.apt);
-        sh.deliveries.push({ id: str(x.id, 64) || uid(), t: x.t, block: blk, apt: a.apt, floor: a.floor, review: !!x.review, source: x.source === 'photo' ? 'photo' : 'manual', del: !!x.del });
+        sh.deliveries.push({ id: str(x.id, 64) || uid(), t: x.t, block: blk, apt: a.apt, floor: a.floor, review: !!x.review, source: x.source === 'photo' ? 'photo' : 'manual', del: !!x.del, v: Number.isInteger(x.v) && x.v >= 0 && x.v <= 1000000 ? x.v : null });
       } catch { /* entrega inválida é descartada */ }
     }
     out.shifts.push(sh);
@@ -662,7 +727,7 @@ function endShift() {
 }
 
 /** Registra uma entrega. `at` = horário da foto (já carimbado); sem foto vale o instante do toque. O horário nunca é editável depois. */
-function addDelivery(blockRaw, aptRaw, { force = false, at = null, source = 'manual', review = false, requestId = null } = {}) {
+function addDelivery(blockRaw, aptRaw, { force = false, at = null, source = 'manual', review = false, requestId = null, value = null } = {}) {
   const s = requireOpen();
   if (s.breaks.some((b) => b.e == null)) throw new AppErr('SHIFT_ON_BREAK', 'Você está em pausa. Retome para registrar entregas.');
   const block = normalizeBlock(blockRaw), a = normalizeApt(aptRaw);
@@ -677,7 +742,8 @@ function addDelivery(blockRaw, aptRaw, { force = false, at = null, source = 'man
     const dup = s.deliveries.find((d) => !d.del && d.block === block && d.apt === a.apt && Math.abs(d.t - t) <= CFG.dupMs);
     if (dup) throw new AppErr('DUPLICATE_RECENT', 'Entrega igual registrada há instantes. Se for outra entrega, confirme o registro.');
   }
-  const d = { id: uid(), t, block, apt: a.apt, floor: a.floor, review: !!review, source, del: false };
+  if (value != null && (!Number.isInteger(value) || value < 0 || value > 1000000)) throw new AppErr('INVALID_VALUE', 'Valor inválido.');
+  const d = { id: uid(), t, block, apt: a.apt, floor: a.floor, review: !!review, source, del: false, v: value };
   if (requestId) d.rid = requestId;
   s.deliveries.push(d);
   save();
@@ -687,13 +753,16 @@ function findDelivery(id) {
   for (const s of DB.shifts) { const d = s.deliveries.find((x) => x.id === id && !x.del); if (d) return { s, d }; }
   return null;
 }
-function updateDelivery(id, blockRaw, aptRaw) {
+/** value: undefined = mantém, null = limpa, número = centavos. */
+function updateDelivery(id, blockRaw, aptRaw, value) {
   const f = findDelivery(id);
   if (!f) throw new AppErr('NOT_FOUND', 'Entrega não encontrada.');
   const block = normalizeBlock(blockRaw || f.d.block), a = normalizeApt(aptRaw || f.d.apt);
-  const before = `${f.d.block} ${f.d.apt}`;
+  if (value !== undefined && value !== null && (!Number.isInteger(value) || value < 0 || value > 1000000)) throw new AppErr('INVALID_VALUE', 'Valor inválido.');
+  const before = `${f.d.block} ${f.d.apt} ${brl(f.d.v)}`;
   f.d.block = block; f.d.apt = a.apt; f.d.floor = a.floor; f.d.review = false;   // o horário (t) NUNCA muda
-  if (f.s.end != null) logAudit(`Entrega de ${fmtDateTime(f.d.t)} corrigida: ${before} → ${block} ${a.apt}.`);
+  if (value !== undefined) f.d.v = value;
+  if (f.s.end != null) logAudit(`Entrega de ${fmtDateTime(f.d.t)} corrigida: ${before} → ${block} ${a.apt} ${brl(f.d.v)}.`);
   save();
   return f.d;
 }
@@ -703,6 +772,15 @@ function deleteDelivery(id) {
   f.d.del = true;
   logAudit(`Entrega ${f.d.block} ${f.d.apt} de ${fmtDateTime(f.d.t)} excluída.`);
   save();
+}
+
+/** Desfaz um registro automático logo após ele acontecer (some de verdade, sem deixar rastro de exclusão). */
+function undoDelivery(id) {
+  for (const s of DB.shifts) {
+    const i = s.deliveries.findIndex((x) => x.id === id);
+    if (i >= 0) { if (now() - s.deliveries[i].t > 120000) throw new AppErr('TOO_LATE', 'Já passou do tempo de desfazer. Exclua pela lista.'); s.deliveries.splice(i, 1); save(); return; }
+  }
+  throw new AppErr('NOT_FOUND', 'Entrega não encontrada.');
 }
 
 /* ---------------- visão do turno atual (com proatividade) ---------------- */
@@ -742,14 +820,15 @@ function currentView() {
 
 /* ---------------- relatórios ---------------- */
 function totalsOf(shifts, goal, nowMs) {
-  let deliveries = 0, net = 0, gross = 0, late = 0, over = 0, short = 0, hits = 0;
+  let deliveries = 0, net = 0, gross = 0, late = 0, over = 0, short = 0, hits = 0, sales = 0;
   for (const s of shifts) {
     const n = liveDeliveries(s).length, sm = summarize(s, nowMs);
     deliveries += n; net += sm.net; gross += sm.gross; over += sm.over; short += sm.short;
+    for (const d of liveDeliveries(s)) sales += d.v || 0;
     if (sm.lateS) late++;
     if (n >= goal) hits++;
   }
-  return { shifts: shifts.length, deliveries, net, gross, perHour: perHour(deliveries, net), avgPerShift: shifts.length ? Math.round((deliveries / shifts.length) * 10) / 10 : 0, hits, late, over, short, balance: over - short };
+  return { shifts: shifts.length, deliveries, sales, net, gross, perHour: perHour(deliveries, net), avgPerShift: shifts.length ? Math.round((deliveries / shifts.length) * 10) / 10 : 0, hits, late, over, short, balance: over - short };
 }
 function summaryReport(days) {
   const nowMs = now(), today = ymdOf(nowMs), goal = userGoal();
@@ -792,17 +871,41 @@ function csvSafe(v) { const s = v == null ? '' : String(v); return /^[=+\-@\t\r]
 function csvCell(v) { const s = csvSafe(v); return /[";\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; }
 function buildCsv(days) {
   const nowMs = now(), from = addDays(ymdOf(nowMs), -(days - 1));
-  const rows = [['Dia', 'Entrada', 'Saida', 'Pausas (min)', 'Liquido (h:mm)', 'Entregas', 'Por hora', 'Atraso (min)', 'Hora extra (min)', 'Obs.']];
+  const rows = [['Dia', 'Entrada', 'Saida', 'Pausas (min)', 'Liquido (h:mm)', 'Entregas', 'Vendido (R$)', 'Por hora', 'Atraso (min)', 'Hora extra (min)', 'Obs.']];
   for (const s of [...DB.shifts].sort((a, b) => a.start - b.start)) {
     if (s.date < from) continue;
     const sm = summarize(s, nowMs), n = liveDeliveries(s).length;
     rows.push([s.date, fmtTime(s.start), s.end ? fmtTime(s.end) : '', Math.floor(sm.pause / 60), `${Math.floor(sm.net / 3600)}:${String(Math.floor((sm.net % 3600) / 60)).padStart(2, '0')}`,
-      n, String(perHour(n, sm.net)).replace('.', ','), Math.floor(sm.lateS / 60), Math.floor(sm.over / 60), [s.test ? 'teste' : '', s.demo ? 'exemplo' : '', s.closeReason === 'auto' ? 'fechado pelo sistema' : ''].filter(Boolean).join(', ')]);
+      n, (liveDeliveries(s).reduce((a, d) => a + (d.v || 0), 0) / 100).toFixed(2).replace('.', ','), String(perHour(n, sm.net)).replace('.', ','), Math.floor(sm.lateS / 60), Math.floor(sm.over / 60), [s.test ? 'teste' : '', s.demo ? 'exemplo' : '', s.closeReason === 'auto' ? 'fechado pelo sistema' : ''].filter(Boolean).join(', ')]);
   }
   return '﻿' + rows.map((r) => r.map(csvCell).join(';')).join('\r\n');
 }
 
+/** Planilha das entregas (já filtradas pelo painel): uma linha por entrega, com valor. */
+function buildDeliveriesCsv(rows) {
+  const head = ['Data', 'Hora', 'Bloco', 'Apartamento', 'Andar', 'Valor (R$)', 'Origem', 'Para conferir'];
+  const body = rows.map((d) => [d.date, fmtTime(d.t), d.block, d.apt, d.floor === 0 ? 'SS' : d.floor, d.v == null ? '' : (d.v / 100).toFixed(2).replace('.', ','), d.source === 'photo' ? 'foto' : 'manual', d.review ? 'sim' : '']);
+  return '﻿' + [head, ...body].map((r) => r.map(csvCell).join(';')).join('\r\n');
+}
+
 /* ---------------- leitura da comanda: interpretação do texto (OCR) ---------------- */
+// Valor da comanda: prefere "TOTAL"/"VALOR TOTAL"/"A PAGAR"; sem rótulo, usa o maior "R$ x,xx" e pede conferência.
+function moneyFromToken(tok) {
+  const f = String(tok).replace(/[OQD]/g, '0').replace(/[IL|!]/g, '1').replace(/S/g, '5').replace(/\s+/g, '');
+  try { const c = parseMoney(f); return c && c >= 100 ? c : null; } catch { return null; }
+}
+function parseValue(raw) {
+  const NUM = '(\\d[\\dOQDIL|!S]{0,3}(?:[.,][\\dOQDIL|!S]{3})*[.,][\\dOQDIL|!S]{2})(?![\\dOQDIL|!S])';
+  const labeled = [/\bTOTAL\s*(?:GERAL|A\s*PAGAR|PEDIDO|DO\s*PEDIDO)?\s*[:=]?\s*(?:R\s*\$?)?\s*/, /\bVALOR\s*(?:TOTAL|A\s*PAGAR|DO\s*PEDIDO)?\s*[:=]?\s*(?:R\s*\$?)?\s*/, /\bA\s*PAGAR\s*[:=]?\s*(?:R\s*\$?)?\s*/];
+  for (const pre of labeled) {
+    const m = raw.match(new RegExp(pre.source + NUM));
+    if (m) { const c = moneyFromToken(m[1]); if (c) return { value: c, sure: true }; }
+  }
+  let best = null;
+  for (const m of raw.matchAll(new RegExp('R\\s*\\$\\s*' + NUM, 'g'))) { const c = moneyFromToken(m[1]); if (c && (!best || c > best)) best = c; }
+  return best ? { value: best, sure: false } : { value: null, sure: false };
+}
+
 // O OCR confunde caracteres parecidos (l/I/| por 1, Z por 2, S por 5, G por C...). Aqui corrigimos só dentro dos
 // formatos esperados e marcamos a leitura como "para conferir" quando uma correção foi necessária.
 const BLOCK_LETTER = { A: 'A', B: 'B', C: 'C', G: 'C', '(': 'C', 8: 'B' };
@@ -856,7 +959,8 @@ function parseComanda(rawText) {
   let confidence = 'nenhuma';
   if (readable) confidence = explicitBlock && explicitApt && !fixed ? 'alta' : 'media';
   else if (block || apt) confidence = 'baixa';
-  return { block, apt, floor, readable, confidence, needsReview: confidence !== 'alta' };
+  const val = parseValue(labeled);
+  return { block, apt, floor, readable, confidence, needsReview: confidence !== 'alta', value: val.value, valueSure: val.sure };
 }
 
 /* ============================================================
@@ -868,7 +972,7 @@ const ICONS = {
   rel: '<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>',
   hist: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>',
 };
-const TABS = [['turno', 'Turno'], ['rel', 'Desempenho'], ['hist', 'Histórico']];
+const TABS = [['turno', 'Turno'], ['rel', 'Painel'], ['hist', 'Histórico']];
 
 /* ---------------- folhas, avisos, ações ---------------- */
 function sheet(html) {
@@ -882,10 +986,17 @@ const sheetOpen = () => $('scrim').classList.contains('on');
 let toastTimer;
 function toast(msg, ms = 2400) {
   const t = $('toast');
-  t.textContent = msg; t.classList.add('on');
+  t.textContent = msg; t.classList.remove('act'); t.classList.add('on');
   clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('on'), ms);
 }
-const skeleton = (n = 2) => Array.from({ length: n }, () => '<div class="skeleton"></div>').join('');
+function toastAction(msg, label, fn, ms = 8000) {
+  const t = $('toast');
+  t.innerHTML = `${esc(msg)} <button class="toast-btn" id="toastBtn">${esc(label)}</button>`;
+  t.classList.add('on', 'act');
+  $('toastBtn').onclick = () => { t.classList.remove('on', 'act'); fn(); };
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('on', 'act'), ms);
+}
+const skeleton =(n = 2) => Array.from({ length: n }, () => '<div class="skeleton"></div>').join('');
 async function busy(btn, fn) {
   if (!btn || btn.disabled) return;
   btn.disabled = true;
@@ -935,14 +1046,14 @@ function render({ quiet = false } = {}) {
   $('dock').classList.toggle('hide', !(UI.tab === 'turno' && open && sm.status === 'open'));
   try {
     if (UI.tab === 'turno') renderTurno(view);
-    else if (UI.tab === 'rel') renderRel(view);
+    else if (UI.tab === 'rel') renderPainel(view);
     else renderHist(view);
   } catch (e) { console.error(e); view.innerHTML = `<div class="errbox">Não foi possível exibir esta tela. <button class="btn sm" data-act="reload">Recarregar</button></div>`; }
 }
 actions.reload = () => location.reload();
 
 /* ---------------- TURNO ---------------- */
-const deliveryRow = (d) => `<button class="item" data-act="edit-delivery" data-id="${esc(d.id)}"><span class="dest">${esc(d.block)} ${esc(d.apt)}</span><span class="t">${fmtTime(d.t)}</span>${d.review ? '<span class="badge">CONFERIR</span>' : ''}${d.source === 'photo' ? '<span class="tag photo">FOTO</span>' : ''}</button>`;
+const deliveryRow = (d) => `<button class="item" data-act="edit-delivery" data-id="${esc(d.id)}"><span class="dest">${esc(d.block)} ${esc(d.apt)}</span><span class="t">${fmtTime(d.t)}</span>${d.review ? '<span class="badge">CONFERIR</span>' : ''}${d.source === 'photo' ? '<span class="tag photo">FOTO</span>' : ''}${d.v != null ? `<span class="gold amt">${brl(d.v)}</span>` : ''}</button>`;
 const alertsHtml = (al) => (al.length ? `<div class="alerts">${al.map((a) => `<div class="alert ${esc(a.severity)}" role="status"><i></i><span>${esc(a.message)}</span></div>`).join('')}</div>` : '');
 
 function hourBars(dl, s) {
@@ -960,6 +1071,7 @@ function renderTurno(el) {
   notifyNew(s, alerts);
   UI.sinceBase = pace.since == null || sm.status === 'on_break' ? null : { value: pace.since, at: Date.now() };
   const n = dl.length, pg = Math.min(100, Math.round((n / goal) * 100)), paused = sm.status === 'on_break';
+  const sales = dl.reduce((a, d) => a + (d.v || 0), 0), nWith = dl.filter((d) => d.v != null).length || 1;
   el.innerHTML = `
     <div class="card shiftbar">
       <div class="times"><div><span>Entrada</span><b>${fmtTime(s.start)}</b></div><i></i><div><span>Saída prevista</span><b class="gold">${fmtTime(s.plannedEnd)}</b></div></div>
@@ -972,6 +1084,7 @@ function renderTurno(el) {
       <div class="row" style="justify-content:space-between;align-items:baseline"><div class="count"><b>${n}</b><span> / ${goal}</span></div><span class="gold" style="font-weight:700">${n >= goal ? 'Meta batida' : pg + '%'}</span></div>
       <div class="progress"><div style="width:${pg}%"></div></div>
       ${n < goal && proj.expected != null ? `<div class="proj"><span>Previsão ao fim: <b>~${proj.expected}</b></span>${proj.eta ? `<span>Meta às <b>${fmtTime(proj.eta)}</b></span>` : ''}${proj.required ? `<span>Precisa de <b>${num1(proj.required)}/h</b></span>` : ''}</div>` : ''}
+      ${sales ? `<div class="proj"><span>Vendido hoje: <b>${brl(sales)}</b></span><span>Ticket médio: <b>${brl(Math.round(sales / nWith))}</b></span></div>` : ''}
       <div class="trio" style="margin-top:14px">
         <div><b>${num1(pace.perHour)}</b><span>por hora ${base.delta != null ? `<em class="${base.delta >= 0 ? 'up' : 'down'}">${pct(base.delta)}</em>` : ''}</span></div>
         <div><b>${pace.typical != null ? mmss(pace.typical) : '—'}</b><span>entre entregas</span></div>
@@ -998,7 +1111,7 @@ function renderNoShift(el) {
     <div class="card"><h2>Bater entrada</h2>
       <p class="mut" style="margin:0 0 14px;font-size:14px">Hoje, <b style="color:var(--txt)">${cap(F_LONG.format(new Date(now())))}</b>. Escolha o seu horário de início.</p>
       <div class="grid2">${presets}</div></div>
-    ${r.c.shifts ? `<div class="card"><h2>Últimos 7 dias</h2><div class="trio"><div><b>${r.c.deliveries}</b><span>entregas</span></div><div><b>${num1(r.c.perHour)}</b><span>por hora</span></div><div><b>${r.c.hits}</b><span>metas batidas</span></div></div>
+    ${r.c.shifts ? `<div class="card"><h2>Últimos 7 dias</h2><div class="trio"><div><b>${r.c.deliveries}</b><span>entregas</span></div><div><b>${brl(r.c.sales)}</b><span>vendido</span></div><div><b>${num1(r.c.perHour)}</b><span>por hora</span></div></div>
       ${r.streak ? `<p class="mut" style="font-size:13px;margin:12px 0 0">Sequência: <b class="gold">${r.streak}</b> turno(s) seguidos batendo a meta.</p>` : ''}</div>` : `<div class="card"><h2>Comece por aqui</h2><p class="mut" style="font-size:14px;margin:0">Bata a entrada, registre as entregas e acompanhe o seu ritmo. Quer ver o sistema cheio de dados? Abra <b>Ajustes → Carregar dados de exemplo</b>.</p></div>`}`;
 }
 
@@ -1039,17 +1152,34 @@ actions['end-shift'] = async () => {
   if (!ok) return;
   try {
     const s = endShift();
-    const sm = summarize(s, now());
     render();
-    toast([sm.over ? `Hora extra: ${dur(sm.over)}` : '', sm.short ? `Jornada incompleta: faltaram ${dur(sm.short)}` : '', 'Turno fechado'].filter(Boolean).join(' · '), 4500);
+    shiftSummarySheet(s);
   } catch (e) { toast(e.message, 3600); render(); }
 };
-actions['edit-delivery'] = (el) => { const f = findDelivery(el.dataset.id); if (f) deliverySheet({ edit: f.d }); };
+/** Resumo ao fechar o turno: o total de entregas e quanto foi vendido, pronto para conferir. */
+function shiftSummarySheet(s) {
+  const sm = summarize(s, now()), dl = liveDeliveries(s), n = dl.length;
+  const sales = dl.reduce((a, d) => a + (d.v || 0), 0), nv = dl.filter((d) => d.v != null).length;
+  const ph = perHour(n, sm.net), goal = userGoal(), base = s.test ? null : baseline(s.id, now());
+  sheet(`<h3>Turno encerrado</h3><p class="mut" style="margin:0 0 12px;font-size:13px">${ymdToDm(s.date)} · ${fmtTime(s.start)} às ${fmtTime(s.end)}${s.test ? ' · teste' : ''}</p>
+    <div class="bi-kpis" style="margin-bottom:12px">
+      <div class="kpi-card"><span>Entregas</span><b>${n}</b><small>${n >= goal ? `meta de ${goal} batida` : `meta ${goal}: faltaram ${goal - n}`}</small></div>
+      <div class="kpi-card strong"><span>Vendido</span><b>${brl(sales)}</b><small>${nv ? `ticket médio ${brl(Math.round(sales / nv))}` : 'nenhum valor informado'}</small></div>
+      <div class="kpi-card"><span>Entregas por hora</span><b>${num1(ph)}</b><small>${base && base.avgPerHour7d ? `média 7 dias: ${num1(base.avgPerHour7d)}` : 'sem comparação ainda'}</small></div>
+      <div class="kpi-card"><span>Vendido por hora</span><b>${sm.net >= CFG.minRateSec ? brl(Math.round(sales / (sm.net / 3600))) : '—'}</b><small>${dur(sm.net)} líquidas</small></div></div>
+    ${n - nv ? `<p class="mut" style="font-size:13px;margin:0 0 8px">${n - nv} entrega(s) sem valor. Toque nelas no histórico para informar.</p>` : ''}
+    ${sm.over ? `<div class="alert info"><i></i><span>Hora extra no turno: ${dur(sm.over)}.</span></div>` : ''}${sm.short ? `<div class="alert warning"><i></i><span>Jornada incompleta: faltaram ${dur(sm.short)}.</span></div>` : ''}
+    <div class="grid2" style="margin-top:14px"><button class="btn" id="sumClose">Fechar</button><button class="btn gold" id="sumPanel">Ver painel</button></div>`);
+  $('sumClose').onclick = closeSheet;
+  $('sumPanel').onclick = () => { closeSheet(); UI.tab = 'rel'; BI.period = 'hoje'; render(); window.scrollTo(0, 0); };
+}
+actions['edit-delivery'] =(el) => { const f = findDelivery(el.dataset.id); if (f) deliverySheet({ edit: f.d }); };
 actions.manual = () => deliverySheet({ title: 'Registrar sem foto' });
 actions.photo = () => $('file').click();
 
 /* ---------------- registro de entrega ---------------- */
-function deliverySheet({ title, block = null, apt = '', at = null, source = 'manual', review = false, note = '', edit = null }) {
+const centsToInput = (c) => (c == null ? '' : (c / 100).toFixed(2).replace('.', ','));
+function deliverySheet({ title, block = null, apt = '', at = null, source = 'manual', review = false, note = '', edit = null, value = null }) {
   const requestId = uid();                     // repetir o toque com o mesmo id não duplica
   let chosen = edit ? edit.block : block;
   sheet(`<h3>${esc(edit ? 'Corrigir entrega' : title)}</h3>
@@ -1058,6 +1188,8 @@ function deliverySheet({ title, block = null, apt = '', at = null, source = 'man
     <div class="chips" id="chips">${CFG.blocks.map((b) => `<button type="button" class="chip ${chosen === b ? 'on' : ''}" data-b="${b}">${b}</button>`).join('')}</div>
     <label for="apt">Apartamento <span class="mut">(241 = 24º andar, final 1 · SS12 = subsolo)</span></label>
     <input id="apt" inputmode="text" autocapitalize="characters" autocomplete="off" maxlength="8" value="${esc(edit ? edit.apt : apt)}">
+    <label for="val">Valor da comanda (R$) <span class="mut">opcional</span></label>
+    <input id="val" inputmode="decimal" autocomplete="off" maxlength="12" placeholder="0,00" value="${esc(centsToInput(edit ? edit.v : value))}">
     ${edit ? `<p class="mut lockp">Horário registrado: <b class="gold">${fmtTime(edit.t)}</b>. Não pode ser alterado.</p>` : at ? `<p class="mut lockp">Horário da foto: <b class="gold">${fmtTime(at)}</b></p>` : ''}
     <p id="dErr" class="lerr" role="alert" style="text-align:left;margin:10px 0 0"></p>
     <div class="${edit ? 'grid2' : ''}" style="margin-top:12px">${edit ? '<button class="btn red" id="dDel" type="button">Excluir</button>' : ''}<button class="btn gold" id="dOk" type="button">${edit ? 'Salvar' : 'Registrar'}</button></div>`);
@@ -1075,17 +1207,19 @@ function deliverySheet({ title, block = null, apt = '', at = null, source = 'man
     err('');
     const apartment = $('apt').value.trim();
     if (!chosen || !apartment) return err('Escolha o bloco e informe o apartamento.');
+    let cents = null;
+    try { cents = parseMoney($('val').value); } catch (e) { return err(e.message); }
     try {
-      if (edit) { updateDelivery(edit.id, chosen, apartment); toast('Entrega atualizada'); }
+      if (edit) { updateDelivery(edit.id, chosen, apartment, cents); toast('Entrega atualizada'); }
       else {
         // "para conferir" só se o funcionário aceitou a leitura automática sem alterar
         const accepted = source === 'photo' && review && chosen === block && normalizeApt(apartment).apt === apt;
-        const o = { at, source, review: accepted, requestId };
+        const o = { at, source, review: accepted, requestId, value: cents };
         try { addDelivery(chosen, apartment, o); }
         catch (e) {
           if (e.code !== 'DUPLICATE_RECENT') throw e;
           const again = await confirmSheet({ title: 'Mesma entrega há instantes', text: e.message, ok: 'Registrar de novo' });
-          if (!again) return deliverySheet({ title, block: chosen, apt: apartment, at, source, review, note });
+          if (!again) return deliverySheet({ title, block: chosen, apt: apartment, at, source, review, note, value: cents });
           addDelivery(chosen, apartment, { ...o, force: true, requestId: uid() });
         }
         toast(`✓ ${chosen} ${normalizeApt(apartment).apt}`);
@@ -1209,48 +1343,32 @@ async function readComanda(file) {
   if (failure || !result) {
     deliverySheet({ title: 'Digite o bloco e o apto', at, source: 'photo', note: !navigator.onLine ? '!Sem internet para carregar o leitor de fotos. Digite o bloco e o apto; o horário da foto foi guardado.' : '!Não consegui ler a foto. Digite o bloco e o apto; o horário da foto foi guardado.' });
   } else if (result.readable) {
-    deliverySheet({ title: 'Confirme a leitura', block: result.block, apt: result.apt, at, source: 'photo', review: result.needsReview, note: result.needsReview ? '!Leitura incerta. Confira o bloco e o apartamento antes de registrar.' : 'Leitura automática. Confira e toque em Registrar.' });
+    // leitura segura (bloco e apto explícitos) e valor sem dúvida (ou ausente): registra sozinho, com "Desfazer"
+    const sure = result.confidence === 'alta' && (result.value == null || result.valueSure);
+    if (DB.prefs.autoPhoto && sure) {
+      try {
+        const { delivery } = addDelivery(result.block, result.apt, { at, source: 'photo', review: false, value: result.value });
+        closeSheet(); render();
+        try { navigator.vibrate?.(40); } catch { /* ignore */ }
+        toastAction(`✓ ${delivery.block} ${delivery.apt}${delivery.v != null ? ' · ' + brl(delivery.v) : ''}`, 'Desfazer', () => { undoDelivery(delivery.id); render(); toast('Entrega desfeita'); }, 8000);
+        return;
+      } catch (e) { /* duplicada, pausa, etc.: cai na confirmação manual abaixo */ }
+    }
+    deliverySheet({ title: 'Confirme a leitura', block: result.block, apt: result.apt, at, source: 'photo', review: result.needsReview, value: result.value, note: result.needsReview ? '!Leitura incerta. Confira o bloco e o apartamento antes de registrar.' : result.value != null && !result.valueSure ? '!Confira também o valor lido.' : 'Leitura automática. Confira e toque em Registrar.' });
   } else {
-    deliverySheet({ title: 'Digite o bloco e o apto', block: result.block, apt: result.apt || '', at, source: 'photo', note: '!Não consegui ler tudo na foto. Complete o que faltou; o horário da foto foi guardado.' });
+    deliverySheet({ title: 'Digite o bloco e o apto', block: result.block, apt: result.apt || '', at, source: 'photo', value: result.value, note: '!Não consegui ler tudo na foto. Complete o que faltou; o horário da foto foi guardado.' });
   }
 }
 $('file').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) readComanda(f); });
 
-/* ---------------- DESEMPENHO ---------------- */
-function renderRel(el) {
-  const s = summaryReport(UI.range), c = s.c;
-  const maxDay = Math.max(1, s.goal, ...s.perDay.map((d) => d.n));
-  const bar = (rows) => { const m = Math.max(1, ...rows.map((r) => r.n)); return rows.map((r) => `<div class="hrow"><span class="k">${esc(r.k)}</span><span class="b"><div style="width:${(r.n / m) * 100}%"></div></span><span class="v">${r.n}</span></div>`).join(''); };
-  el.innerHTML = `
-    <div class="seg">${[7, 30, 90].map((d) => `<button data-act="range" data-d="${d}" class="${d === UI.range ? 'on' : ''}">${d} dias</button>`).join('')}</div>
-    ${!c.shifts ? '<div class="card empty">Sem turnos nesse período.<br>Os números aparecem aqui conforme você bate o ponto.</div>' : `
-    <div class="kpi">
-      <div class="stat"><b>${c.deliveries}</b><span>entregas no período</span></div>
-      <div class="stat"><b>${num1(c.avgPerShift)}</b><span>média por turno</span></div>
-      <div class="stat"><b>${c.hits}<span class="mut" style="font-size:14px"> / ${c.shifts}</span></b><span>metas batidas (${s.goal})</span></div>
-      <div class="stat"><b>${num1(c.perHour)}</b><span>por hora ${s.change != null ? `<i class="${s.change >= 0 ? 'up' : 'down'}">${pct(s.change)} vs. anterior</i>` : ''}</span></div></div>
-    <div class="card"><div class="row-between"><div><h2>Recorde</h2><b class="gold" style="font-size:26px;font-family:Fraunces,serif">${s.record.deliveries}</b> <span class="mut">entregas em ${ymdToDm(s.record.date)} · ${num1(s.record.perHour)}/h</span></div>
-      <div><h2>Sequência</h2><b class="gold" style="font-size:26px;font-family:Fraunces,serif">${s.streak}</b> <span class="mut">turnos na meta</span></div></div></div>
-    <div class="card"><h2>Jornada</h2>
-      <div class="kv"><span>Horas líquidas</span><span>${dur(c.net)}</span></div><div class="kv"><span>Atrasos na entrada</span><span>${c.late}</span></div>
-      <div class="kv"><span>Hora extra</span><span>${dur(c.over)}</span></div><div class="kv"><span>Jornadas incompletas (falta)</span><span>${dur(c.short)}</span></div>
-      <div class="kv"><span>Saldo da jornada</span><span class="${c.balance >= 0 ? 'good' : 'bad'}">${c.balance < 0 ? '−' : '+'}${dur(Math.abs(c.balance))}</span></div></div>
-    <div class="card"><h2>Entregas por dia</h2><div class="bars">${s.perDay.map((d) => `<div class="${d.hit ? 'hit' : d.n ? '' : 'dim'}" style="height:${Math.max(2, (d.n / maxDay) * 100)}%" title="${ymdToDm(d.date)}: ${d.n}"></div>`).join('')}</div>
-      <div class="axis"><span>${ymdToDm(s.perDay[0].date)}</span><span>verde = meta batida</span><span>${ymdToDm(s.perDay[s.perDay.length - 1].date)}</span></div></div>
-    <div class="card"><h2>Horários de pico</h2>${s.peak.length ? bar(s.peak) : '<div class="empty">Sem dados.</div>'}</div>
-    <div class="card"><h2>Por bloco</h2>${bar(s.byBlock)}</div>
-    <div class="card"><h2>Por faixa de andar</h2>${bar(s.byBand)}</div>
-    ${s.top.length ? `<div class="card"><h2>Destinos mais frequentes</h2>${s.top.map((t) => `<div class="kv"><span><b style="color:var(--txt)">${esc(t.k)}</b></span><span>${t.n}×</span></div>`).join('')}</div>` : ''}
-    <button class="btn" data-act="export-csv">Baixar espelho em planilha (${UI.range} dias)</button>`}`;
-}
-actions.range = (el) => { UI.range = Number(el.dataset.d); render(); };
+/* ---------------- PAINEL: ver bi.js ---------------- */
 function download(name, text, type) {
   const url = URL.createObjectURL(new Blob([text], { type }));
   const a = document.createElement('a');
   a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 3000);
 }
-actions['export-csv'] = () => { download(`espelho-${ymdOf(now())}.csv`, buildCsv(UI.range), 'text/csv;charset=utf-8'); toast('Planilha gerada'); };
+actions['export-csv'] = () => { download(`espelho-${ymdOf(now())}.csv`, buildCsv(90), 'text/csv;charset=utf-8'); toast('Planilha gerada (últimos 90 dias)'); };
 
 /* ---------------- HISTÓRICO ---------------- */
 function allDeliveries() {
@@ -1276,7 +1394,7 @@ function histEntregas() {
     if (UI.f.to) l = l.filter((d) => d.date <= UI.f.to);
     const shown = l.slice(0, UI.histPage * 50), flagged = l.filter((d) => d.review).length;
     $('entList').innerHTML = `<h2>${l.length} entregas${flagged ? ` · ${flagged} para conferir` : ''}</h2>` + (shown.length
-      ? shown.map((d) => `<button class="item" data-act="edit-delivery" data-id="${esc(d.id)}"><span class="dest">${esc(d.block)} ${esc(d.apt)}</span><span class="t">${fmtDateTime(d.t)}</span>${d.review ? '<span class="badge">CONFERIR</span>' : ''}${d.source === 'photo' ? '<span class="tag photo">FOTO</span>' : ''}${d.test ? '<span class="tag auto">TESTE</span>' : ''}</button>`).join('') + (shown.length < l.length ? '<button class="btn sm loadmore" data-act="more-del">Carregar mais</button>' : '')
+      ? shown.map((d) => `<button class="item" data-act="edit-delivery" data-id="${esc(d.id)}"><span class="dest">${esc(d.block)} ${esc(d.apt)}</span><span class="t">${fmtDateTime(d.t)}</span>${d.review ? '<span class="badge">CONFERIR</span>' : ''}${d.source === 'photo' ? '<span class="tag photo">FOTO</span>' : ''}${d.test ? '<span class="tag auto">TESTE</span>' : ''}${d.v != null ? `<span class="gold amt">${brl(d.v)}</span>` : ''}</button>`).join('') + (shown.length < l.length ? '<button class="btn sm loadmore" data-act="more-del">Carregar mais</button>' : '')
       : '<div class="empty">Nenhuma entrega encontrada.</div>');
   };
   let tm;
@@ -1291,10 +1409,10 @@ function histDias() {
   const nowMs = now();
   const list = [...DB.shifts].sort((a, b) => b.start - a.start).slice(0, 90);
   $('hbody').innerHTML = `<div class="card"><div class="row-between" style="margin-bottom:10px"><h2 style="margin:0">Espelho de ponto</h2><button class="btn sm" data-act="export-csv">Baixar planilha</button></div>` + (list.length
-    ? `<div class="scroll"><table class="tbl-click"><tr><th>Dia</th><th>Entrada</th><th>Pausas</th><th>Saída</th><th>Líquido</th><th class="num">Entr.</th><th class="num">Ritmo</th><th>Obs.</th></tr>${list.map((s) => {
+    ? `<div class="scroll"><table class="tbl-click"><tr><th>Dia</th><th>Entrada</th><th>Pausas</th><th>Saída</th><th>Líquido</th><th class="num">Entr.</th><th class="num">Vendido</th><th class="num">Ritmo</th><th>Obs.</th></tr>${list.map((s) => {
       const sm = summarize(s, nowMs), n = liveDeliveries(s).length;
       const obs = [sm.lateS ? `<span class="warnc">atraso ${dur(sm.lateS)}</span>` : '', sm.over ? `<span class="good">extra ${dur(sm.over)}</span>` : '', sm.short ? `<span class="bad">falta ${dur(sm.short)}</span>` : '', s.closeReason === 'auto' ? '<span class="tag auto">AUTO</span>' : '', s.test ? '<span class="tag auto">TESTE</span>' : '', s.demo ? '<span class="tag">EXEMPLO</span>' : ''].filter(Boolean).join(' ');
-      return `<tr data-act="shift-detail" data-id="${esc(s.id)}"><td>${ymdToDm(s.date)}</td><td>${fmtTime(s.start)}</td><td>${s.breaks.length ? s.breaks.map((b) => `${fmtTime(b.s)}–${b.e ? fmtTime(b.e) : '…'}`).join(' ') : '—'}</td><td>${s.end ? fmtTime(s.end) : '<span class="gold">aberto</span>'}</td><td>${dur(sm.net)}</td><td class="num">${n}</td><td class="num">${num1(perHour(n, sm.net))}</td><td>${obs || '—'}</td></tr>`;
+      return `<tr data-act="shift-detail" data-id="${esc(s.id)}"><td>${ymdToDm(s.date)}</td><td>${fmtTime(s.start)}</td><td>${s.breaks.length ? s.breaks.map((b) => `${fmtTime(b.s)}–${b.e ? fmtTime(b.e) : '…'}`).join(' ') : '—'}</td><td>${s.end ? fmtTime(s.end) : '<span class="gold">aberto</span>'}</td><td>${dur(sm.net)}</td><td class="num">${n}</td><td class="num">${brl(liveDeliveries(s).reduce((x, d) => x + (d.v || 0), 0))}</td><td class="num">${num1(perHour(n, sm.net))}</td><td>${obs || '—'}</td></tr>`;
     }).join('')}</table></div>` : '<div class="empty">Nenhum turno registrado ainda.</div>') + '</div>';
 }
 actions['shift-detail'] = (el) => {
@@ -1303,7 +1421,7 @@ actions['shift-detail'] = (el) => {
   const sm = summarize(s, now()), dl = liveDeliveries(s).sort((a, b) => a.t - b.t);
   sheet(`<h3>${ymdToDm(s.date)} · ${fmtTime(s.start)}–${s.end ? fmtTime(s.end) : 'aberto'}</h3>
     <div class="trio" style="margin:10px 0"><div><b>${dl.length}</b><span>entregas</span></div><div><b>${num1(perHour(dl.length, sm.net))}</b><span>por hora</span></div><div><b>${dur(sm.net)}</b><span>líquido</span></div></div>
-    ${dl.map((d) => `<button class="item" data-act="edit-delivery" data-id="${esc(d.id)}"><span class="dest">${esc(d.block)} ${esc(d.apt)}</span><span class="t">${fmtTime(d.t)}</span></button>`).join('') || '<div class="empty">Sem entregas.</div>'}
+    ${dl.map((d) => `<button class="item" data-act="edit-delivery" data-id="${esc(d.id)}"><span class="dest">${esc(d.block)} ${esc(d.apt)}</span><span class="t">${fmtTime(d.t)}</span>${d.v != null ? `<span class="gold amt">${brl(d.v)}</span>` : ''}</button>`).join('') || '<div class="empty">Sem entregas.</div>'}
     <button class="btn" style="margin-top:14px" id="shClose">Fechar</button>`);
   $('shClose').onclick = closeSheet;
 };
@@ -1327,7 +1445,7 @@ function seedDemo() {
       if (t > s.breaks[0].s && t < s.breaks[0].e) t = s.breaks[0].e + 60000;
       const floor = rnd() < 0.05 ? 0 : 1 + Math.floor(rnd() * 28);
       const a = floor === 0 ? normalizeApt('SS' + (1 + Math.floor(rnd() * 20))) : normalizeApt(String(floor * 10 + 1 + Math.floor(rnd() * 4)));
-      s.deliveries.push({ id: uid(), t, block: CFG.blocks[Math.floor(rnd() * 6)], apt: a.apt, floor: a.floor, review: false, source: rnd() < 0.6 ? 'photo' : 'manual', del: false });
+      s.deliveries.push({ id: uid(), t, block: CFG.blocks[Math.floor(rnd() * 6)], apt: a.apt, floor: a.floor, review: false, source: rnd() < 0.6 ? 'photo' : 'manual', del: false, v: rnd() < 0.88 ? Math.round((24 + rnd() * rnd() * 190) * 100) : null });
     }
     DB.shifts.push(s);
   }
@@ -1343,6 +1461,7 @@ actions.settings = () => {
     <label for="sName">Seu nome</label><input id="sName" maxlength="60" value="${esc(DB.user.name)}">
     <label for="sGoal">Meta de entregas por turno</label><input type="number" id="sGoal" min="1" max="1000" inputmode="numeric" value="${DB.user.goal}">
     <p id="sErr" class="lerr" style="text-align:left"></p>
+    <label class="chk"><input type="checkbox" id="sAuto" ${DB.prefs.autoPhoto ? 'checked' : ''}> Registrar sozinho quando a leitura da foto for segura (com “Desfazer”)</label>
     <button class="btn gold" id="sSave">Salvar</button>
     ${notif === 'default' || (notif === 'granted' && !DB.prefs.notify) ? '<button class="btn" id="sNotif" style="margin-top:10px">Ativar avisos no aparelho</button>' : notif === 'granted' ? '<p class="mut" style="font-size:13px;margin:12px 0 0">Avisos do aparelho ativados.</p>' : ''}
     <h2 style="margin:22px 0 8px">Dados</h2>
@@ -1357,7 +1476,7 @@ actions.settings = () => {
     const name = $('sName').value.trim().replace(/\s+/g, ' '), goal = Number($('sGoal').value);
     if (!name) return ($('sErr').textContent = 'Informe o seu nome.');
     if (!Number.isInteger(goal) || goal < 1 || goal > 1000) return ($('sErr').textContent = 'A meta precisa ser um número de 1 a 1000.');
-    DB.user = { name: name.slice(0, 60), goal }; save(); closeSheet(); toast('Salvo'); render();
+    DB.user = { name: name.slice(0, 60), goal }; DB.prefs.autoPhoto = $('sAuto').checked; save(); closeSheet(); toast('Salvo'); render();
   };
   $('sNotif')?.addEventListener('click', async () => { const r = await Notification.requestPermission(); DB.prefs.notify = r === 'granted'; save(); toast(r === 'granted' ? 'Avisos ativados' : 'Avisos não permitidos'); closeSheet(); });
   $('sExport').onclick = () => { download(`backup-ponto-${ymdOf(now())}.json`, JSON.stringify(DB), 'application/json'); toast('Backup salvo'); };
@@ -1418,6 +1537,268 @@ function boot() {
   if (DB.user) enterApp(); else showOnly('setup');
   $('boot').classList.add('hide');
 }
+
+/* ============================================================
+   Painel (estilo Power BI): filtros que se cruzam, indicadores, gráficos, mapa de calor,
+   insights automáticos e tabela detalhada. Tudo calculado no aparelho a partir dos registros.
+   ============================================================ */
+const BI = { period: '7', blocks: new Set(), band: null, day: null, hour: null, dow: null, noValue: false, metric: 'n', sort: { k: 't', dir: -1 }, page: 1 };
+const BI_PERIODS = [['hoje', 'Hoje'], ['7', '7 dias'], ['30', '30 dias'], ['mes', 'Este mês'], ['90', '90 dias'], ['tudo', 'Tudo']];
+const DOW_LABELS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+const dowOf = (ymd) => (new Date(ymd + 'T12:00:00Z').getUTCDay() + 6) % 7;      // 0 = segunda
+
+/** Todas as entregas válidas (sem turnos de teste), achatadas para análise. */
+function biRows() {
+  const out = [];
+  for (const s of DB.shifts) {
+    if (s.test) continue;
+    for (const d of s.deliveries) if (!d.del) out.push({ id: d.id, t: d.t, date: s.date, block: d.block, apt: d.apt, floor: d.floor, v: d.v ?? null, source: d.source, review: d.review, sid: s.id });
+  }
+  return out;
+}
+
+function biRange(period, rows) {
+  const today = ymdOf(now());
+  if (period === 'hoje') return { from: today, to: today, days: 1 };
+  if (period === 'mes') { const from = today.slice(0, 8) + '01'; return { from, to: today, days: Math.round((Date.parse(today) - Date.parse(from)) / 864e5) + 1 }; }
+  if (period === 'tudo') {
+    const from = rows.length ? rows.reduce((m, r) => (r.date < m ? r.date : m), today) : today;
+    return { from, to: today, days: Math.round((Date.parse(today) - Date.parse(from)) / 864e5) + 1, all: true };
+  }
+  const n = Number(period) || 7;
+  return { from: addDays(today, -(n - 1)), to: today, days: n };
+}
+
+/** Aplica os filtros. `skip` ignora uma dimensão (o gráfico dessa dimensão mostra tudo e só destaca a seleção, como no Power BI). */
+function biApply(rows, R, skip = {}) {
+  return rows.filter((r) =>
+    (skip.range || (r.date >= R.from && r.date <= R.to))
+    && (skip.block || !BI.blocks.size || BI.blocks.has(r.block))
+    && (skip.band || !BI.band || floorBand(r.floor) === BI.band)
+    && (skip.day || !BI.day || r.date === BI.day)
+    && (skip.hour || BI.hour == null || hourOf(r.t) === BI.hour)
+    && (skip.dow || BI.dow == null || dowOf(r.date) === BI.dow)
+    && (!BI.noValue || r.v == null));
+}
+
+const sumV = (rows) => rows.reduce((a, r) => a + (r.v || 0), 0);
+const withV = (rows) => rows.filter((r) => r.v != null).length;
+const delta = (cur, prev) => (prev > 0 ? ((cur - prev) / prev) * 100 : null);
+
+function biKpis(rows, R) {
+  const all = biRows();
+  const cur = biApply(all, R);
+  let prev = null;
+  if (!R.all) {
+    const P = { from: addDays(R.from, -R.days), to: addDays(R.from, -1) };
+    prev = biApply(all, P, { day: true, hour: true, dow: true });
+  }
+  const n = cur.length, sales = sumV(cur), nv = withV(cur);
+  const pn = prev ? prev.length : null, ps = prev ? sumV(prev) : null, pnv = prev ? withV(prev) : null;
+  // valor/hora e entregas/hora só fazem sentido sem recortes por bloco/andar/hora/dia da semana
+  const sliced = BI.blocks.size || BI.band || BI.hour != null || BI.dow != null || BI.noValue;
+  const shiftsIn = DB.shifts.filter((s) => !s.test && (BI.day ? s.date === BI.day : s.date >= R.from && s.date <= R.to));
+  const nowMs = now();
+  const net = shiftsIn.reduce((a, s) => a + summarize(s, nowMs).net, 0);
+  const hours = net / 3600;
+  return {
+    n, sales, nv, ticket: nv ? sales / nv : null, coverage: n ? nv / n : null,
+    perHour: !sliced && hours >= 0.05 ? n / hours : null, salesHour: !sliced && hours >= 0.05 ? sales / hours : null,
+    shifts: shiftsIn.length, hits: shiftsIn.filter((s) => liveDeliveries(s).length >= userGoal()).length,
+    dN: pn != null ? delta(n, pn) : null, dS: ps != null ? delta(sales, ps) : null,
+    dT: pnv ? delta(nv ? sales / nv : 0, ps / pnv) : null,
+  };
+}
+
+function biDaily(all, R) {
+  const rows = biApply(all, R, { day: true });
+  const map = {};
+  for (const r of rows) { const o = (map[r.date] ||= { n: 0, v: 0 }); o.n++; o.v += r.v || 0; }
+  const days = [];
+  const total = Math.min(R.days, 120);                // limite de colunas legíveis
+  for (let i = total - 1; i >= 0; i--) { const d = addDays(R.to, -i); days.push({ date: d, n: map[d]?.n || 0, v: map[d]?.v || 0 }); }
+  return days;
+}
+
+function spark(vals) {
+  if (vals.length < 2) return '';
+  const mx = Math.max(...vals, 1), step = 100 / (vals.length - 1);
+  const pts = vals.map((v, i) => `${(i * step).toFixed(1)},${(26 - (v / mx) * 24).toFixed(1)}`).join(' ');
+  return `<svg class="spark" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>`;
+}
+const deltaTag = (d) => (d == null ? '' : `<em class="${d >= 0 ? 'up' : 'down'}">${d >= 0 ? '▲' : '▼'} ${Math.abs(Math.round(d))}%</em>`);
+
+function biInsights(rows, R, K) {
+  const out = [];
+  if (!rows.length) return out;
+  const byDay = {}, byHour = {}, byApt = {}, byBlock = {}, byDow = {};
+  for (const r of rows) {
+    const d = (byDay[r.date] ||= { n: 0, v: 0 }); d.n++; d.v += r.v || 0;
+    byHour[hourOf(r.t)] = (byHour[hourOf(r.t)] || 0) + 1;
+    const k = `${r.block} ${r.apt}`; byApt[k] = (byApt[k] || 0) + 1;
+    byBlock[r.block] = (byBlock[r.block] || 0) + 1;
+    byDow[dowOf(r.date)] = (byDow[dowOf(r.date)] || 0) + 1;
+  }
+  const top = (o) => Object.entries(o).sort((a, b) => (b[1].n ?? b[1]) - (a[1].n ?? a[1]) || a[0].localeCompare(b[0]))[0];
+  const [bd, bdv] = top(byDay);
+  out.push(`Melhor dia: <b>${ymdToDm(bd)}</b> com ${bdv.n} entregas${bdv.v ? ` e ${brl(bdv.v)} vendidos` : ''}.`);
+  const [bh, bhn] = top(byHour);
+  out.push(`Horário de maior movimento: <b>${String(bh).padStart(2, '0')}h</b> (${bhn} entregas).`);
+  const dayCount = {};
+  for (const d of Object.keys(byDay)) dayCount[dowOf(d)] = (dayCount[dowOf(d)] || 0) + 1;
+  const avgDow = Object.entries(byDow).map(([k, n]) => [k, n / dayCount[k]]).sort((a, b) => b[1] - a[1])[0];
+  if (Object.keys(dayCount).length > 1) out.push(`Dia da semana mais forte: <b>${DOW_LABELS[avgDow[0]]}</b> (média de ${num1(avgDow[1])} entregas).`);
+  const [bb, bbn] = top(byBlock);
+  out.push(`Bloco com mais entregas: <b>${esc(bb)}</b> (${Math.round((bbn / rows.length) * 100)}% do total).`);
+  const [ba, ban] = top(byApt);
+  if (ban > 1) out.push(`Destino mais frequente: <b>${esc(ba)}</b> (${ban} entregas).`);
+  const maxV = rows.reduce((m, r) => (r.v != null && (!m || r.v > m.v) ? r : m), null);
+  if (maxV) out.push(`Maior comanda: <b>${brl(maxV.v)}</b> em ${esc(maxV.block)} ${esc(maxV.apt)} (${fmtDM(maxV.t)}).`);
+  if (K.dS != null) out.push(`Vendas ${K.dS >= 0 ? 'acima' : 'abaixo'} do período anterior em <b>${Math.abs(Math.round(K.dS))}%</b>.`);
+  if (K.dN != null) out.push(`Entregas ${K.dN >= 0 ? 'acima' : 'abaixo'} do período anterior em <b>${Math.abs(Math.round(K.dN))}%</b>.`);
+  const semV = rows.length - withV(rows);
+  if (semV) out.push(`<b>${semV}</b> entrega(s) sem valor informado. <button class="linkbtn" data-act="bi-novalue">Ver quais</button>`);
+  return out;
+}
+
+function biHeat(all, R) {
+  const rows = biApply(all, R, { hour: true, dow: true });
+  const grid = {};
+  let mx = 0, hmin = 24, hmax = -1;
+  for (const r of rows) {
+    const h = hourOf(r.t), d = dowOf(r.date), k = d * 24 + h;
+    grid[k] = (grid[k] || 0) + 1; mx = Math.max(mx, grid[k]); hmin = Math.min(hmin, h); hmax = Math.max(hmax, h);
+  }
+  if (!rows.length) return '<div class="empty">Sem dados.</div>';
+  const cells = [`<div class="hm-h"></div>${DOW_LABELS.map((d) => `<div class="hm-h">${d}</div>`).join('')}`];
+  for (let h = hmin; h <= hmax; h++) {
+    cells.push(`<div class="hm-h">${String(h).padStart(2, '0')}h</div>`);
+    for (let d = 0; d < 7; d++) {
+      const n = grid[d * 24 + h] || 0, a = n ? 0.15 + 0.85 * (n / mx) : 0;
+      const sel = BI.dow === d && BI.hour === h ? ' sel' : '';
+      cells.push(`<button class="hm-c${sel}" style="--a:${a.toFixed(2)}" data-act="bi-cell" data-d="${d}" data-h="${h}" title="${DOW_LABELS[d]} ${String(h).padStart(2, '0')}h: ${n} entregas" aria-label="${DOW_LABELS[d]} ${h}h: ${n}">${n || ''}</button>`);
+    }
+  }
+  return `<div class="heat">${cells.join('')}</div>`;
+}
+
+function biBarsH(rows, key, allKeys) {
+  const m = {};
+  for (const k of allKeys || []) m[k] = { n: 0, v: 0 };
+  for (const r of rows) { const k = key(r); if (k == null) continue; const o = (m[k] ||= { n: 0, v: 0 }); o.n++; o.v += r.v || 0; }
+  return m;
+}
+
+function renderPainel(el) {
+  const all = biRows();
+  const R = biRange(BI.period, all);
+  const rows = biApply(all, R);
+  const K = biKpis(rows, R);
+  const daily = biDaily(all, R);
+  const maxDay = Math.max(1, ...daily.map((d) => (BI.metric === 'n' ? d.n : d.v)));
+  const goal = userGoal();
+  const nBars = daily.length, showLbl = nBars <= 16;
+  const dayChart = `<div class="bi-bars${nBars > 40 ? ' thin' : ''}">${BI.metric === 'n' && nBars <= 31 ? `<i class="bi-goal" style="bottom:${Math.min(100, (goal / maxDay) * 100)}%" title="Meta ${goal}"></i>` : ''}${daily.map((d) => {
+    const v = BI.metric === 'n' ? d.n : d.v, h = Math.max(1.5, (v / maxDay) * 100);
+    return `<button class="bi-col${BI.day === d.date ? ' sel' : ''}${v === 0 ? ' zero' : ''}" data-act="bi-day" data-key="${d.date}" title="${ymdToDm(d.date)}: ${d.n} entregas · ${brl(d.v)}" aria-label="${ymdToDm(d.date)}: ${d.n} entregas"><span class="bi-bar" style="height:${h}%"></span>${showLbl ? `<small>${ymdToDm(d.date)}</small>` : ''}</button>`;
+  }).join('')}</div>${!showLbl && daily.length ? `<div class="axis"><span>${ymdToDm(daily[0].date)}</span><span>${BI.metric === 'n' ? 'entregas por dia' : 'vendido por dia'} · máx ${BI.metric === 'n' ? maxDay : brl(maxDay)}</span><span>${ymdToDm(daily[daily.length - 1].date)}</span></div>` : ''}`;
+
+  const hbars = (rowsIn, key, labelOf, isSel, act, dataAttr, allKeys) => {
+    const m = biBarsH(rowsIn, key, allKeys);
+    const entries = Object.entries(m);
+    const mx = Math.max(1, ...entries.map(([, o]) => (BI.metric === 'n' ? o.n : o.v)));
+    return entries.map(([k, o]) => ({ k, o })).sort((a, b) => b.o.n - a.o.n).map(({ k, o }) => {
+      const val = BI.metric === 'n' ? o.n : o.v;
+      return `<button class="hrow bi-h${isSel(k) ? ' sel' : ''}" data-act="${act}" ${dataAttr}="${esc(k)}"><span class="k">${esc(labelOf(k))}</span><span class="b"><div style="width:${(val / mx) * 100}%"></div></span><span class="v2">${o.n}${o.v ? ` · ${brl(o.v)}` : ''}</span></button>`;
+    }).join('');
+  };
+  const blockRows = biApply(all, R, { block: true });
+  const bandRows = biApply(all, R, { band: true });
+  const topApt = (() => {
+    const m = {};
+    for (const r of rows) { const k = `${r.block} ${r.apt}`; const o = (m[k] ||= { n: 0, v: 0 }); o.n++; o.v += r.v || 0; }
+    const e = Object.entries(m).sort((a, b) => b[1].n - a[1].n || b[1].v - a[1].v).slice(0, 6), mx = Math.max(1, ...e.map(([, o]) => o.n));
+    return e.map(([k, o]) => `<div class="hrow"><span class="k" style="width:78px">${esc(k)}</span><span class="b"><div style="width:${(o.n / mx) * 100}%"></div></span><span class="v2">${o.n}×${o.v ? ` · ${brl(o.v)}` : ''}</span></div>`).join('') || '<div class="empty">Sem dados.</div>';
+  })();
+  const topSales = [...rows].filter((r) => r.v != null).sort((a, b) => b.v - a.v).slice(0, 5)
+    .map((r) => `<div class="kv"><span><b style="color:var(--txt)">${esc(r.block)} ${esc(r.apt)}</b> <span class="mut">${fmtDM(r.t)} ${fmtTime(r.t)}</span></span><span class="gold">${brl(r.v)}</span></div>`).join('') || '<div class="empty">Nenhum valor informado.</div>';
+
+  // filtros ativos
+  const chips = [];
+  if (BI.day) chips.push(['day', `Dia ${ymdToDm(BI.day)}`]);
+  if (BI.dow != null && BI.hour != null) chips.push(['cell', `${DOW_LABELS[BI.dow]} ${String(BI.hour).padStart(2, '0')}h`]);
+  if (BI.band) chips.push(['band', BI.band === 'SS' ? 'Subsolo' : `${BI.band.replace('-', '–')}º andar`]);
+  if (BI.noValue) chips.push(['novalue', 'Sem valor']);
+  const filtersOn = BI.blocks.size || chips.length;
+
+  // tabela detalhada
+  const sorted = [...rows].sort((a, b) => {
+    const k = BI.sort.k, d = BI.sort.dir;
+    const va = k === 't' ? a.t : k === 'v' ? (a.v ?? -1) : k === 'block' ? a.block : a.apt;
+    const vb = k === 't' ? b.t : k === 'v' ? (b.v ?? -1) : k === 'block' ? b.block : b.apt;
+    return (va < vb ? -1 : va > vb ? 1 : 0) * d || b.t - a.t;
+  });
+  const shown = sorted.slice(0, BI.page * 30);
+  const th = (k, label, cls = '') => `<th class="${cls} sortable" data-act="bi-sort" data-k="${k}">${label}${BI.sort.k === k ? (BI.sort.dir > 0 ? ' ▲' : ' ▼') : ''}</th>`;
+
+  el.innerHTML = `
+    <div class="bi-filters">
+      <div class="bi-row" role="group" aria-label="Período">${BI_PERIODS.map(([k, l]) => `<button class="chip2${BI.period === k ? ' on' : ''}" data-act="bi-period" data-p="${k}">${l}</button>`).join('')}</div>
+      <div class="bi-row" role="group" aria-label="Bloco">${CFG.blocks.map((b) => `<button class="chip2${BI.blocks.has(b) ? ' on' : ''}" data-act="bi-block" data-k="${b}">${b}</button>`).join('')}
+        ${FLOOR_BANDS.map(([k]) => `<button class="chip2 alt${BI.band === k ? ' on' : ''}" data-act="bi-band" data-k="${k}">${k === 'SS' ? 'SS' : k.replace('-', '–') + 'º'}</button>`).join('')}</div>
+      ${filtersOn ? `<div class="bi-row">${chips.map(([k, l]) => `<button class="chip2 on rm" data-act="bi-rm" data-k="${k}">${esc(l)} ✕</button>`).join('')}<button class="linkbtn" data-act="bi-clear">Limpar filtros</button></div>` : ''}
+    </div>
+    <p class="mut bi-range">${R.from === R.to ? ymdToDm(R.from) : `${ymdToDm(R.from)} a ${ymdToDm(R.to)}`} · ${K.n} entregas selecionadas${R.days > 120 ? ' · gráfico mostra os últimos 120 dias' : ''}</p>
+    ${!all.length ? '<div class="card empty">Ainda não há entregas registradas.<br>Registre entregas no Turno ou use <b>Ajustes → Carregar exemplo</b> para ver o painel cheio.</div>' : `
+    <div class="bi-kpis">
+      <div class="kpi-card"><span>Entregas</span><b>${K.n}</b>${deltaTag(K.dN)}${spark(daily.map((d) => d.n))}</div>
+      <div class="kpi-card strong"><span>Vendido</span><b>${brl(K.sales)}</b>${deltaTag(K.dS)}${spark(daily.map((d) => d.v))}</div>
+      <div class="kpi-card"><span>Ticket médio</span><b>${K.ticket != null ? brl(Math.round(K.ticket)) : '—'}</b>${deltaTag(K.dT)}<small>${K.nv} de ${K.n} com valor</small></div>
+      <div class="kpi-card"><span>Vendido por hora</span><b>${K.salesHour != null ? brl(Math.round(K.salesHour)) : '—'}</b><small>${K.perHour != null ? num1(K.perHour) + ' entregas/h' : 'sem recorte de bloco/hora'}</small></div>
+      <div class="kpi-card"><span>Turnos</span><b>${K.shifts}</b><small>${K.hits} bateram a meta (${goal})</small></div>
+      <div class="kpi-card"><span>Cobertura de valor</span><b>${K.coverage != null ? Math.round(K.coverage * 100) + '%' : '—'}</b><small>${K.n - K.nv ? `${K.n - K.nv} sem valor` : 'tudo informado'}</small></div>
+    </div>
+    <div class="card"><div class="row-between"><h2 style="margin:0">Por dia</h2><div class="seg mini"><button data-act="bi-metric" data-m="n" class="${BI.metric === 'n' ? 'on' : ''}">Entregas</button><button data-act="bi-metric" data-m="v" class="${BI.metric === 'v' ? 'on' : ''}">Vendido</button></div></div>${dayChart}<p class="mut" style="font-size:12px;margin:8px 0 0">Toque em uma barra para filtrar o dia. ${BI.metric === 'n' ? 'A linha tracejada é a sua meta.' : ''}</p></div>
+    <div class="bi-grid">
+      <div class="card"><h2>Por bloco</h2>${hbars(blockRows, (r) => r.block, (k) => k, (k) => BI.blocks.has(k), 'bi-block', 'data-k', CFG.blocks)}</div>
+      <div class="card"><h2>Por faixa de andar</h2>${hbars(bandRows, (r) => floorBand(r.floor), (k) => (k === 'SS' ? 'Subsolo' : `${k.replace('-', '–')}º`), (k) => BI.band === k, 'bi-band', 'data-k', FLOOR_BANDS.map(([k]) => k))}</div>
+    </div>
+    <div class="card"><h2>Mapa de calor · dia da semana × hora</h2>${biHeat(all, R)}<p class="mut" style="font-size:12px;margin:8px 0 0">Mais dourado = mais entregas. Toque em uma célula para filtrar.</p></div>
+    <div class="card"><h2>Insights automáticos</h2>${biInsights(rows, R, K).map((t) => `<p class="insight">${t}</p>`).join('') || '<div class="empty">Sem dados para analisar.</div>'}</div>
+    <div class="bi-grid">
+      <div class="card"><h2>Destinos mais frequentes</h2>${topApt}</div>
+      <div class="card"><h2>Maiores comandas</h2>${topSales}</div>
+    </div>
+    <div class="card"><div class="row-between" style="margin-bottom:10px"><h2 style="margin:0">Detalhe das entregas</h2><button class="btn sm" data-act="bi-csv">Baixar planilha</button></div>
+      ${shown.length ? `<div class="scroll"><table class="tbl-click"><tr>${th('t', 'Data e hora')}${th('block', 'Bloco')}${th('apt', 'Apto')}${th('v', 'Valor', 'num')}</tr>
+        ${shown.map((r) => `<tr data-act="edit-delivery" data-id="${esc(r.id)}"><td>${fmtDateTime(r.t)}${r.source === 'photo' ? ' <span class="tag photo">FOTO</span>' : ''}${r.review ? ' <span class="badge">CONFERIR</span>' : ''}</td><td>${esc(r.block)}</td><td>${esc(r.apt)}</td><td class="num">${r.v != null ? brl(r.v) : '<span class="mut">—</span>'}</td></tr>`).join('')}
+        <tr class="totrow"><td colspan="3"><b>Total (${rows.length} entregas)</b></td><td class="num"><b>${brl(K.sales)}</b></td></tr></table></div>
+        ${shown.length < rows.length ? '<button class="btn sm loadmore" data-act="bi-more">Carregar mais</button>' : ''}` : '<div class="empty">Nenhuma entrega nos filtros atuais.</div>'}</div>`}`;
+}
+
+/* ---- interações do painel ---- */
+const biRefresh = () => { BI.page = 1; render(); };
+actions['bi-period'] = (el) => { BI.period = el.dataset.p; BI.day = null; biRefresh(); };
+actions['bi-block'] = (el) => { const k = el.dataset.k; BI.blocks.has(k) ? BI.blocks.delete(k) : BI.blocks.add(k); biRefresh(); };
+actions['bi-band'] = (el) => { BI.band = BI.band === el.dataset.k ? null : el.dataset.k; biRefresh(); };
+actions['bi-day'] = (el) => { BI.day = BI.day === el.dataset.key ? null : el.dataset.key; biRefresh(); };
+actions['bi-cell'] = (el) => { const d = Number(el.dataset.d), h = Number(el.dataset.h); if (BI.dow === d && BI.hour === h) { BI.dow = null; BI.hour = null; } else { BI.dow = d; BI.hour = h; } biRefresh(); };
+actions['bi-metric'] = (el) => { BI.metric = el.dataset.m; render(); };
+actions['bi-novalue'] = () => { BI.noValue = true; biRefresh(); };
+actions['bi-clear'] = () => { BI.blocks.clear(); BI.band = null; BI.day = null; BI.hour = null; BI.dow = null; BI.noValue = false; biRefresh(); };
+actions['bi-rm'] = (el) => {
+  const k = el.dataset.k;
+  if (k === 'day') BI.day = null; else if (k === 'cell') { BI.dow = null; BI.hour = null; } else if (k === 'band') BI.band = null; else if (k === 'novalue') BI.noValue = false;
+  biRefresh();
+};
+actions['bi-sort'] = (el) => { const k = el.dataset.k; BI.sort = { k, dir: BI.sort.k === k ? -BI.sort.dir : (k === 't' || k === 'v' ? -1 : 1) }; render(); };
+actions['bi-more'] = () => { BI.page++; render(); };
+actions['bi-csv'] = () => {
+  const all = biRows(), R = biRange(BI.period, all);
+  const rows = biApply(all, R).sort((a, b) => a.t - b.t);
+  download(`entregas-${ymdOf(now())}.csv`, buildDeliveriesCsv(rows), 'text/csv;charset=utf-8');
+  toast(`${rows.length} entregas na planilha`);
+};
 
 /* ============================================================
    Autotestes embutidos. Abra  index.html?selftest  para rodar no próprio navegador.
@@ -1669,6 +2050,96 @@ function runSelfTests() {
     T('backup: só um turno aberto', () => {
       const mk = (id, st) => ({ id, date: '2026-10-06', preset: 15, sched: st, plannedEnd: st + 1e7, start: st, end: null, breaks: [], deliveries: [] });
       eq(sanitizeDb({ shifts: [mk('a', 1000), mk('b', 2000)] }).shifts.filter((s) => s.end == null).length, 1);
+    });
+    /* ---- valor das entregas ---- */
+    T('valor: leitura de dinheiro em vários formatos', () => {
+      eq(['52', '52,5', '52,50', 'R$ 1.234,56', '1234.56', '1.234', 'R$52,00', '0'].map(parseMoney), [5200, 5250, 5250, 123456, 123456, 123400, 5200, 0]);
+      eq([parseMoney(''), parseMoney(null), parseMoney('   ')], [null, null, null]);
+      for (const bad of ['abc', '-5', '10.000.000', '12,345', '100000,00', '5,5,5', '1,2,3']) throwsCode(() => parseMoney(bad), 'INVALID_VALUE');
+      ok(brl(5290).includes('52,90') && brl(5290).includes('R$'), 'formato brl'); eq(brl(null), '—');
+    });
+    T('valor: entrega guarda, corrige, limpa e valida', () => {
+      startShift(15); clock(at(2026, 10, 6, 15, 30));
+      const d = addDelivery('A1', '241', { value: 5290 }).delivery; eq(d.v, 5290);
+      eq(updateDelivery(d.id, 'A1', '241').v, 5290, 'sem value mantém');
+      eq(updateDelivery(d.id, 'A1', '241', 6000).v, 6000); eq(updateDelivery(d.id, 'A1', '241', null).v, null);
+      throwsCode(() => updateDelivery(d.id, 'A1', '241', -1), 'INVALID_VALUE'); throwsCode(() => addDelivery('B1', '181', { value: 1.5 }), 'INVALID_VALUE');
+      eq(addDelivery('B1', '181').delivery.v, null);
+    });
+    T('valor: desfazer registro automático (some de verdade, só nos 2 primeiros minutos)', () => {
+      startShift(15); clock(at(2026, 10, 6, 15, 30)); const d = addDelivery('A1', '241', { value: 100 }).delivery;
+      undoDelivery(d.id); eq(openShift().deliveries.length, 0); throwsCode(() => undoDelivery(d.id), 'NOT_FOUND');
+      const e = addDelivery('A1', '241').delivery; clock(at(2026, 10, 6, 15, 40)); throwsCode(() => undoDelivery(e.id), 'TOO_LATE');
+    });
+    T('valor: backup descarta valor inválido', () => {
+      const s = { id: 'a', date: '2026-10-06', preset: 15, sched: 1, plannedEnd: 5, start: 2, end: 4, breaks: [], deliveries: [{ t: 3, block: 'A1', apt: '241', v: 5290 }, { t: 3, block: 'A1', apt: '241', v: -5 }, { t: 3, block: 'A1', apt: '241', v: 'x' }, { t: 3, block: 'A1', apt: '241', v: 99999999 }] };
+      eq(sanitizeDb({ shifts: [s] }).shifts[0].deliveries.map((d) => d.v), [5290, null, null, null]);
+    });
+    T('comanda: valor pelo rótulo TOTAL / VALOR / A PAGAR', () => {
+      const a = parseComanda('BLOCO C1 APTO 241 TOTAL R$ 52,00'); eq([a.value, a.valueSure, a.confidence], [5200, true, 'alta']);
+      eq(parseComanda('VALOR TOTAL: 1.234,56').value, 123456); eq(parseComanda('A PAGAR R$ 8,90').value, 890);
+      eq(parseComanda('SUBTOTAL 40,00 TAXA 5,00 TOTAL 45,00').value, 4500, 'SUBTOTAL não pode ser confundido com TOTAL');
+    });
+    T('comanda: valor com erro típico do OCR e sem rótulo', () => {
+      eq(parseComanda('TOTAL R$ 5O,OO').value, 5000); eq(parseComanda('TOTAL 1O5,9O').value, 10590);
+      const n = parseComanda('ITEM R$ 12,00 ITEM R$ 52,00'); eq([n.value, n.valueSure], [5200, false]);
+      eq(parseComanda('obrigado volte sempre').value, null); eq(parseComanda('TEL 99999-1234').value, null); eq(parseComanda('TOTAL 0,50').value, null);
+    });
+
+    /* ---- painel (BI) ---- */
+    const biReset = (period = '7') => Object.assign(BI, { period, blocks: new Set(), band: null, day: null, hour: null, dow: null, noValue: false, metric: 'n', sort: { k: 't', dir: -1 }, page: 1 });
+    const mkShift = (date, dels) => {
+      const sched = localToMs(date, 15);
+      const s = { id: uid(), date, preset: 15, sched, plannedEnd: sched + 500 * MIN, start: sched, end: sched + 500 * MIN, closeReason: null, test: false, demo: false, breaks: [], deliveries: [] };
+      for (const [h, mi, b, a, v] of dels) { const n = normalizeApt(a); s.deliveries.push({ id: uid(), t: localToMs(date, h, mi), block: b, apt: n.apt, floor: n.floor, review: false, source: 'manual', del: false, v }); }
+      DB.shifts.push(s); return s;
+    };
+    const biFixture = () => {
+      mkShift('2026-10-06', [[16, 5, 'A1', '241', 5000], [17, 0, 'A1', '241', 3000], [20, 10, 'C2', '152', null]]);
+      mkShift('2026-10-05', [[19, 0, 'B1', 'SS12', 4000], [19, 30, 'B1', '181', 6000]]);
+      mkShift('2026-10-04', [[20, 0, 'A1', '241', null]]);
+      mkShift('2026-09-28', [[18, 0, 'A1', '241', 2000]]);                  // período anterior
+      const t = mkShift('2026-10-03', [[18, 0, 'A1', '241', 9900]]); t.test = true;   // turno de teste: fora dos números
+    };
+    T('painel: indicadores, comparação e cobertura de valor', () => {
+      biFixture(); biReset(); const all = biRows(); eq(all.length, 7, 'turno de teste fica de fora');
+      const R = biRange('7', all), K = biKpis(biApply(all, R), R);
+      eq([R.from, R.to], ['2026-09-30', '2026-10-06']);
+      eq([K.n, K.sales, K.nv, K.ticket, Math.round(K.coverage * 100), K.shifts], [6, 18000, 4, 4500, 67, 3]);
+      eq([Math.round(K.dN), Math.round(K.dS)], [500, 800]); eq(Math.round(K.salesHour), 720);
+    });
+    T('painel: filtros se cruzam (bloco, dia, sem valor, dia da semana + hora, andar)', () => {
+      biFixture(); biReset(); const all = biRows(), R = biRange('7', all);
+      BI.blocks.add('A1'); let K = biKpis(biApply(all, R), R); eq([K.n, K.sales, K.salesHour], [3, 8000, null]);   // recorte por bloco: sem valor/hora
+      BI.blocks.clear(); BI.day = '2026-10-05'; eq(biApply(all, R).length, 2);
+      BI.day = null; BI.noValue = true; eq(biApply(all, R).map((r) => r.apt).sort(), ['152', '241']);
+      BI.noValue = false; BI.dow = 0; BI.hour = 19; eq(biApply(all, R).length, 2);     // segunda-feira às 19h
+      BI.dow = null; BI.hour = null; BI.band = 'SS'; eq(biApply(all, R).map((r) => r.apt), ['SS12']);
+      BI.band = null; eq(biApply(all, R, { range: true }).length, 7);
+      BI.blocks.add('B1'); eq(biApply(all, R, { block: true }).length, 6, 'o gráfico do próprio bloco ignora o filtro de bloco');
+    });
+    T('painel: períodos (hoje, mês, tudo) e série diária', () => {
+      biFixture(); biReset(); const all = biRows();
+      eq(biRange('hoje', all), { from: '2026-10-06', to: '2026-10-06', days: 1 }); eq(biRange('mes', all).from, '2026-10-01');
+      const t = biRange('tudo', all); eq([t.from, t.all], ['2026-09-28', true]); eq(biApply(all, t).length, 7);
+      const d = biDaily(all, biRange('7', all)); eq(d.length, 7); eq(d.map((x) => x.n), [0, 0, 0, 0, 1, 2, 3]);
+    });
+    T('painel: insights automáticos e mapa de calor', () => {
+      biFixture(); biReset(); const all = biRows(), R = biRange('7', all), rows = biApply(all, R), K = biKpis(rows, R);
+      const ins = biInsights(rows, R, K).join(' | ');
+      ok(ins.includes('Melhor dia') && ins.includes('06/10'), 'melhor dia'); ok(ins.includes('Bloco com mais entregas') && ins.includes('A1'), 'bloco'); ok(ins.includes('Maior comanda') && ins.includes('R$'), 'maior comanda');
+      ok(ins.includes('sem valor informado'), 'aviso de valores faltando'); ok(ins.includes('acima do período anterior'), 'comparação');
+      const heat = biHeat(all, R); ok(heat.includes('class="heat"') && heat.includes('data-act="bi-cell"'), 'mapa de calor');
+      eq((heat.match(/hm-c/g) || []).length > 7, true);
+    });
+    T('painel: planilha das entregas com valor e andar', () => {
+      biFixture(); biReset(); const all = biRows(), rows = biApply(all, biRange('7', all)).sort((a, b) => a.t - b.t);
+      const lines = buildDeliveriesCsv(rows).replace('﻿', '').split('\r\n');
+      eq(lines.length, 7); ok(lines[0].startsWith('Data;Hora;Bloco;Apartamento;Andar;Valor (R$)'));
+      ok(lines.some((l) => l.includes('B1;SS12;SS;40,00')), 'subsolo com valor'); ok(lines.some((l) => l.includes('C2;152;15;;')), 'entrega sem valor fica vazia');
+    });
+    T('espelho (planilha de turnos) inclui o vendido', () => {
+      biFixture(); const lines = buildCsv(30).replace('﻿', '').split('\r\n'); ok(lines[0].includes('Vendido (R$)')); ok(lines.some((l) => l.startsWith('2026-10-06') && l.includes(';80,00;')), 'vendido do dia 06/10 = 80,00');
     });
     T('XSS: texto do usuário é escapado', () => eq(esc('<img src=x onerror="a()">&\''), '&lt;img src=x onerror=&quot;a()&quot;&gt;&amp;&#39;'));
 
